@@ -9,7 +9,7 @@ const SPRING = { type: 'spring', stiffness: 350, damping: 35 }
 const INSTANT = { duration: 0 }
 const defaultFormat = new Intl.NumberFormat('en-CA').format
 
-export default function AnimatedNumber({ value, format = defaultFormat, className, ...props }) {
+export default function AnimatedNumber({ value, format = defaultFormat, className, rollDirection, ...props }) {
   const reduce = useReducedMotion()
   // Work out the direction while rendering (React's "adjust state when a prop changes" pattern)
   const [previous, setPrevious] = useState(value)
@@ -19,13 +19,14 @@ export default function AnimatedNumber({ value, format = defaultFormat, classNam
     setPrevious(value)
   }
   const offset = reduce ? 0 : 10
+  const animationDirection = rollDirection ?? direction
 
   return (
     <span className={cn('relative inline-flex overflow-hidden tabular-nums', className)} {...props}>
-      <AnimatePresence mode="popLayout" initial={false} custom={direction}>
+      <AnimatePresence mode="popLayout" initial={false} custom={animationDirection}>
         <motion.span
           key={value}
-          custom={direction}
+          custom={animationDirection}
           variants={{
             enter: (dir) => ({ y: offset * dir, opacity: 0 }),
             center: { y: 0, opacity: 1 },
@@ -68,9 +69,26 @@ export function CountUp({ to, steps = 12, duration = 1100, delay = 250, ...props
   return <AnimatedNumber value={value} {...props} />
 }
 
-/** mm:ss (or h:mm:ss) timer whose digits roll every second. */
+function RollingDigits({ value, format = String, direction }) {
+  const digits = format(value).split('').reverse()
+  return (
+    <span className="inline-flex flex-row-reverse">
+      {digits.map((digit, position) => (
+        <AnimatedNumber key={position} value={Number(digit)} format={String} rollDirection={direction} />
+      ))}
+    </span>
+  )
+}
+
+/** mm:ss (or h:mm:ss) timer that rolls only the digits that change. */
 export function RollingTimer({ ms, className }) {
   const total = Math.max(0, Math.floor(ms / 1000))
+  const [previousTotal, setPreviousTotal] = useState(total)
+  const [direction, setDirection] = useState(0)
+  if (total !== previousTotal) {
+    setDirection(total > previousTotal ? 1 : -1)
+    setPreviousTotal(total)
+  }
   const h = Math.floor(total / 3600)
   const m = Math.floor((total % 3600) / 60)
   const s = total % 60
@@ -79,13 +97,13 @@ export function RollingTimer({ ms, className }) {
     <span className={cn('inline-flex items-baseline tabular-nums', className)} aria-label={`${h ? `${h} h ` : ''}${m} min ${s} s`}>
       {h > 0 && (
         <>
-          <AnimatedNumber value={h} format={String} />
+          <RollingDigits value={h} direction={direction} />
           <span>:</span>
         </>
       )}
-      <AnimatedNumber value={m} format={two} />
+      <RollingDigits value={m} format={two} direction={direction} />
       <span>:</span>
-      <AnimatedNumber value={s} format={two} />
+      <RollingDigits value={s} format={two} direction={direction} />
     </span>
   )
 }
