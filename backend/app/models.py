@@ -72,6 +72,11 @@ class Hang(Base):
     # Optional timer the host sets ("buzz us in 1 h"): everyone gets a notification when it's up
     timer_ends_at: Mapped[datetime | None] = mapped_column(DateTime)
     timer_sent_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # Open Hangs: "open" shows up for people nearby in Meet (by shared interests), "friends" is QR/code only.
+    visibility: Mapped[str | None] = mapped_column(String(10), default="friends")
+    activity: Mapped[str | None] = mapped_column(String(40))     # what you're doing: "Basketball", "Study"...
+    max_size: Mapped[int | None] = mapped_column(Integer)        # most people at once, host included (None = no limit)
+    join_mode: Mapped[str | None] = mapped_column(String(10), default="anyone")  # anyone / approve (open Hangs)
 
     host: Mapped[User] = relationship()
     members: Mapped[list["HangMember"]] = relationship(
@@ -98,9 +103,40 @@ class HangMember(Base):
     phones_down_seen_at: Mapped[datetime | None] = mapped_column(DateTime)  # last heartbeat
     points_earned: Mapped[int | None] = mapped_column(Integer)
     breakdown: Mapped[dict | None] = mapped_column(JSON)
+    joined_via: Mapped[str | None] = mapped_column(String(10))  # host / code (QR) / arrive (checked themselves in)
 
     hang: Mapped[Hang] = relationship(back_populates="members")
     user: Mapped[User] = relationship()
+
+
+class HangRsvp(Base):
+    """'I'm coming' to an open Hang. Anyone-can-come Hangs say yes straight away; otherwise the host decides.
+    status: going (you can check in when you arrive), pending (waiting for the host), declined, cancelled,
+    arrived (checked in)."""
+    __tablename__ = "hang_rsvps"
+    __table_args__ = (UniqueConstraint("hang_id", "user_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    hang_id: Mapped[int] = mapped_column(ForeignKey("hangs.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    status: Mapped[str] = mapped_column(String(10), default="going", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    hang: Mapped[Hang] = relationship()
+    user: Mapped[User] = relationship()
+
+
+class Report(Base):
+    """Someone reported another player (or a host said they weren't really at the Hang)."""
+    __tablename__ = "reports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    reporter_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    hang_id: Mapped[int | None] = mapped_column(ForeignKey("hangs.id"))
+    reason: Mapped[str] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class HexScore(Base):

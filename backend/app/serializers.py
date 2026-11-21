@@ -1,9 +1,9 @@
 """Turn database rows into the JSON the app receives."""
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, object_session
 
 from . import territory
-from .models import Hang, HangMember, Team, User
+from .models import Hang, HangMember, HangRsvp, Team, User
 from .points import party_multiplier
 from .timeutil import iso, utcnow
 
@@ -46,12 +46,47 @@ def phones_down_active(m: HangMember) -> bool:
 
 def counted_party(hang: Hang, m: HangMember) -> tuple[int, int]:
     """(teammates, other players) who count toward this member's party bonus.
-    Everyone who joined counts, except people whose time stopped because they went home.
+    Everyone who joined counts, except people whose time stopped because they went home, and people the
+    host removed because they weren't really there.
     People with no team count as other players, not as each other's teammates."""
-    others = [o for o in hang.members if o.id != m.id and o.left_reason != "left_area"]
+    others = [o for o in hang.members if o.id != m.id and o.left_reason not in ("left_area", "removed")]
     team_id = m.user.team_id
     teammates = sum(1 for o in others if team_id is not None and o.user.team_id == team_id)
     return teammates, len(others) - teammates
+
+
+def here_count(hang: Hang) -> int:
+    """People at the Hang right now (not checked out, not gone home, not removed)."""
+    return sum(1 for m in hang.members if m.left_at is None)
+
+
+def spots_left(db: Session, hang: Hang) -> int | None:
+    """Room left before the Hang is full: people here plus people on their way. None = no limit."""
+    if not hang.max_size:
+        return None
+    on_the_way = db.scalar(select(func.count()).select_from(HangRsvp).where(
+        HangRsvp.hang_id == hang.id, HangRsvp.status == "going")) or 0
+    return max(hang.max_size - here_count(hang) - on_the_way, 0)
+
+
+def hangs_done(db: Session, user_id: int) -> int:
+    return db.scalar(select(func.count()).select_from(HangMember).join(Hang).where(
+        HangMember.user_id == user_id, Hang.status == "ended")) or 0
+
+
+def rsvps_out(db: Session, hang: Hang) -> list[dict]:
+    """People coming or asking to come (the host sees the requests with a little profile to decide)."""
+    rows = db.scalars(select(HangRsvp).where(HangRsvp.hang_id == hang.id,
+                                             HangRsvp.status.in_(("going", "pending")))
+                      .order_by(HangRsvp.created_at))
+    return [{
+        "user_id": r.user_id,
+        "name": r.user.name,
+        "team": team_out(r.user.team),
+        "interests": r.user.interests or [],
+        "hangs_done": hangs_done(db, r.user_id),
+        "status": r.status,
+    } for r in rows]
 
 
 def hang_out(db: Session, hang: Hang) -> dict:
@@ -71,6 +106,7 @@ def hang_out(db: Session, hang: Hang) -> dict:
             "party_multiplier": round(party_multiplier(teammates, others), 2),
             "points_earned": m.points_earned,
             "breakdown": m.breakdown,
+            "joined_via": m.joined_via,
         })
     data = {
         "id": hang.id,
@@ -87,6 +123,14 @@ def hang_out(db: Session, hang: Hang) -> dict:
         "timer_ends_at": iso(hang.timer_ends_at),
         "end_reason": hang.end_reason,
         "members": members,
+        # Open Hangs (Meet): who can see it, what it is, how many can come, and who said they're coming
+        "visibility": hang.visibility or "friends",
+        "activity": hang.activity,
+        "max_size": hang.max_size,
+        "join_mode": hang.join_mode or "anyone",
+        "here_count": here_count(hang),
+        "spots_left": spots_left(db, hang),
+        "rsvps": rsvps_out(db, hang),
         "hex_owner": None,
         "hex_owner_before": None,
     }

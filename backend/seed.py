@@ -2,6 +2,8 @@
 
     python seed.py          add sample data (skips if teams already exist)
     python seed.py --reset  wipe EVERYTHING and start over
+    python seed.py --open   just add fresh open Hangs near McGill (for Meet; they end by themselves after
+                            3 hours without check-ins, so run this again shortly before a demo)
 
 All names and scores here are made up.
 """
@@ -14,7 +16,7 @@ import h3
 from app.auth import new_token
 from app.db import Base, SessionLocal, engine
 from app.geo import hex_for
-from app.models import HexScore, Team, User
+from app.models import Hang, HangMember, HexScore, Team, User
 from app.timeutil import local_today, utcnow
 
 TEAMS = [
@@ -22,6 +24,14 @@ TEAMS = [
     ("Night Owls", "#6366f1"),
     ("Sunset Crew", "#f97316"),
     ("Ice Breakers", "#06b6d4"),
+]
+
+# Open Hangs from sample players near McGill, so "Happening near you" isn't empty in a demo:
+# (activity, place, lat, lng, host index in PLAYERS, other member indexes, max size, join mode)
+OPEN_HANGS = [
+    ("Basketball", "McGill lower field", 45.5046, -73.5765, 1, [11], 8, "anyone"),
+    ("Study", "McLennan Library", 45.5030, -73.5763, 4, [], 4, "approve"),
+    ("Running", "Mount Royal Park", 45.5036, -73.5874, 6, [0], None, "anyone"),
 ]
 
 PLAYERS = [
@@ -81,7 +91,39 @@ def main(reset: bool) -> None:
                                     points=base * random.uniform(0.8, 0.95), earned_at=when))
         db.commit()
         print(f"Added {len(TEAMS)} teams, {len(PLAYERS)} players and territory at {len(TERRITORY)} places.")
+    add_open_hangs()
+
+
+def add_open_hangs() -> None:
+    """Open Hangs from sample players, started 25 minutes ago and checked in just now."""
+    from app.routers.hangs import _new_code
+    with SessionLocal() as db:
+        players = {u.name: u for u in db.query(User).all()}
+        now = utcnow()
+        added = 0
+        for activity, place, lat, lng, host_idx, member_idxs, max_size, mode in OPEN_HANGS:
+            host = players.get(PLAYERS[host_idx][0])
+            if host is None:
+                continue
+            hang = Hang(code=_new_code(db), kind="group", host_id=host.id, lat=lat, lng=lng, hex_id=hex_for(lat, lng),
+                        place_name=place, place_type="park" if activity != "Study" else "library",
+                        started_at=now - timedelta(minutes=25), visibility="open", activity=activity,
+                        max_size=max_size, join_mode=mode)
+            db.add(hang)
+            db.flush()
+            for i, idx in enumerate([host_idx, *member_idxs]):
+                u = players.get(PLAYERS[idx][0])
+                if u is None:
+                    continue
+                db.add(HangMember(hang_id=hang.id, user_id=u.id, joined_at=now - timedelta(minutes=25 - 5 * i),
+                                  last_verified_at=now, joined_via="host" if i == 0 else "code"))
+            added += 1
+        db.commit()
+        print(f"Added {added} open Hangs near McGill.")
 
 
 if __name__ == "__main__":
-    main(reset="--reset" in sys.argv)
+    if "--open" in sys.argv:
+        add_open_hangs()
+    else:
+        main(reset="--reset" in sys.argv)

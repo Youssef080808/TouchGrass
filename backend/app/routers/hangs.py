@@ -37,12 +37,13 @@ from sqlalchemy.orm import Session
 from .. import notify, territory
 from ..auth import current_user
 from ..config import (DAILY_POINTS_CAP, HOME_RADIUS_M, JOIN_RADIUS_M, MIN_HANG_MINUTES, NO_CHECKIN_END_HOURS,
-                      PLACE_RADIUS_M, POINTS_TIME_SCALE)
+                      PLACE_RADIUS_M, POINTS_TIME_SCALE, REPORTS_TO_BLOCK)
 from ..db import SessionLocal, get_db
 from ..geo import distance_m, hex_for
 from ..models import Hang, HangMember, HexScore, User
 from ..points import score_member
-from ..serializers import PHONES_DOWN_HEARTBEAT_GRACE_S, counted_party, hang_out, people_met
+from ..models import Report
+from ..serializers import PHONES_DOWN_HEARTBEAT_GRACE_S, counted_party, hang_out, here_count, people_met
 from ..timeutil import local_day_start_utc, local_today, utcnow
 from ..weather import current_weather
 
@@ -50,6 +51,13 @@ router = APIRouter(tags=["hangs"])
 
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O or 1/I, easier to read aloud
 STAY_RADIUS_FACTOR = 3  # you count as "at the Hang" within 3x the join radius (300 m by default)
+OPEN_HANG_HOME_RADIUS_M = 150  # an open Hang can't start this close to the host's home
+
+
+def is_blocked(db: Session, user_id: int) -> bool:
+    """Reported by REPORTS_TO_BLOCK different people: no posting or joining open Hangs."""
+    reporters = db.scalar(select(func.count(func.distinct(Report.reporter_id))).where(Report.user_id == user_id)) or 0
+    return reporters >= REPORTS_TO_BLOCK
 
 
 class Location(BaseModel):
@@ -64,6 +72,11 @@ class StartHang(Location):
     # Where the suggested place is, so the server can check you're really there
     place_lat: float | None = Field(default=None, ge=-90, le=90)
     place_lng: float | None = Field(default=None, ge=-180, le=180)
+    # Open to new people (shows up in Meet) or just friends (QR/code); what you're doing; how many people at most
+    visibility: Literal["open", "friends"] = "friends"
+    activity: str | None = Field(default=None, max_length=40)
+    max_size: int | None = Field(default=None, ge=2, le=50)
+    join_mode: Literal["anyone", "approve"] = "anyone"
 
 
 class JoinHang(Location):
@@ -260,16 +273,28 @@ def start_hang(body: StartHang, user: User = Depends(current_user), db: Session 
             raise HTTPException(
                 400, f"Solo sessions count when you're at least {HOME_RADIUS_M:.0f} m "
                      "from home, or at a suggested place. Go touch some grass!")
+    open_hang = body.kind == "group" and body.visibility == "open"
+    if open_hang:
+        # Safety: open Hangs are for public places, so not at home, and not for people others keep reporting.
+        if _near_home(user, body, OPEN_HANG_HOME_RADIUS_M):
+            raise HTTPException(400, "Open Hangs are for public places, and you're at home. "
+                                     "Make it a friends-only Hang, or start it somewhere public.")
+        if is_blocked(db, user.id):
+            raise HTTPException(403, "You can't post open Hangs right now because of reports from other players.")
     weather = current_weather(body.lat, body.lng)
     now = utcnow()
     hang = Hang(
         code=_new_code(db), kind=body.kind, host_id=user.id, lat=body.lat, lng=body.lng,
         hex_id=hex_for(body.lat, body.lng), place_name=body.place_name, place_type=body.place_type,
         bad_weather=bool(weather and weather["bad"]), started_at=now,
+        visibility="open" if open_hang else "friends",
+        activity=(body.activity or "").strip() or None,
+        max_size=body.max_size if body.kind == "group" else None,
+        join_mode=body.join_mode if open_hang else "anyone",
     )
     db.add(hang)
     db.flush()
-    db.add(HangMember(hang_id=hang.id, user_id=user.id, joined_at=now, last_verified_at=now))
+    db.add(HangMember(hang_id=hang.id, user_id=user.id, joined_at=now, last_verified_at=now, joined_via="host"))
     db.commit()
     db.refresh(hang)
     return hang_out(db, hang)
@@ -290,8 +315,10 @@ def join_hang(body: JoinHang, user: User = Depends(current_user), db: Session = 
     d = distance_m(hang.lat, hang.lng, body.lat, body.lng)
     if d > JOIN_RADIUS_M:
         raise HTTPException(400, f"You're {d:.0f} m away. Get within {JOIN_RADIUS_M:.0f} m of the group to join.")
+    if hang.max_size and here_count(hang) >= hang.max_size:
+        raise HTTPException(409, f"This Hang is full ({hang.max_size} people max).")
     now = utcnow()
-    db.add(HangMember(hang_id=hang.id, user_id=user.id, joined_at=now, last_verified_at=now))
+    db.add(HangMember(hang_id=hang.id, user_id=user.id, joined_at=now, last_verified_at=now, joined_via="code"))
     db.commit()
     db.refresh(hang)
     return hang_out(db, hang)

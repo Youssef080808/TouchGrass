@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse
 
 from .config import CORS_ORIGINS, STATIC_DIR
 from .db import Base, DB_URL, add_missing_columns, engine
-from .routers import game, hangs, push, teams, users
+from .routers import game, hangs, meet, push, teams, users
 
 
 @asynccontextmanager
@@ -66,6 +66,7 @@ app.add_middleware(
 app.include_router(users.router, prefix="/api")
 app.include_router(teams.router, prefix="/api")
 app.include_router(hangs.router, prefix="/api")
+app.include_router(meet.router, prefix="/api")
 app.include_router(game.router, prefix="/api")
 app.include_router(push.router, prefix="/api")
 
