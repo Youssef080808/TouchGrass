@@ -10,6 +10,10 @@ import { useUser } from '../user'
 export const PENDING_JOIN_KEY = 'tg_pending_join'
 
 const STEPS = ['welcome', 'name', 'interests', 'team', 'home']
+const DEFAULT_INTERESTS = [
+  'Basketball', 'Soccer', 'Running', 'Climbing', 'Gym', 'Tennis', 'Hiking', 'Board games',
+  'Coffee', 'Reading', 'Art', 'Music', 'Movies', 'Food', 'Photography', 'Bowling',
+]
 
 export default function Onboarding() {
   const { signIn } = useUser()
@@ -17,7 +21,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(0)
   const [name, setName] = useState('')
   const [isAdult, setIsAdult] = useState(false)
-  const [allInterests, setAllInterests] = useState([])
+  const [allInterests, setAllInterests] = useState(DEFAULT_INTERESTS)
   const [interests, setInterests] = useState([])
   const [teams, setTeams] = useState([])
   const [teamId, setTeamId] = useState(null)
@@ -28,7 +32,11 @@ export default function Onboarding() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    api('/interests').then(setAllInterests).catch(() => {})
+    api('/interests')
+      .then((items) => {
+        if (Array.isArray(items) && items.length > 0) setAllInterests(items)
+      })
+      .catch(() => {})
     api('/teams').then(setTeams).catch(() => {})
   }, [])
 
