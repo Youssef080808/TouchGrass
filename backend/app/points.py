@@ -1,7 +1,10 @@
 """The points formula. Change the numbers here to tune the game.
 
 points = minutes together x party bonus x phones-down bonus x streak bonus x activity bonus x weather bonus
-         + new-place bonus, capped per day
+         + new-place bonus + new-people bonus, capped per day
+
+The new-people bonus rewards widening your circle: extra points for each person in the Hang you've never
+been in a Hang with before.
 
 Locking your phone is fine: your time together counts from check-in to check-out.
 The phones-down bonus is optional: keep the app open on the black screen with the phone face-down
@@ -18,6 +21,8 @@ MAX_STREAK_BONUS = 0.5       # ...up to +50%
 ACTIVE_PLACE_BONUS = 1.2     # parks, gyms, courts: physically active places
 BAD_WEATHER_BONUS = 1.2      # going out in rain, snow or deep cold
 NEW_PLACE_BONUS = 25         # first time you score in this hexagon
+NEW_PERSON_BONUS = 15        # each person you've never been in a Hang with before...
+MAX_NEW_PEOPLE_BONUS = 45    # ...up to 3 people's worth per Hang
 
 ACTIVE_PLACE_TYPES = {"park", "gym", "hiking_area", "sports_complex", "stadium",
                       "swimming_pool", "playground", "athletic_field"}
@@ -37,7 +42,7 @@ def streak_multiplier(streak_days: int) -> float:
 
 def score_member(*, seconds: float, phones_down_seconds: float, teammates: int, others: int,
                  streak_days: int, place_type: str | None, new_place: bool, bad_weather: bool,
-                 left_area: bool, cap_left: int, solo_at_home: bool = False) -> dict:
+                 left_area: bool, cap_left: int, solo_at_home: bool = False, new_people: int = 0) -> dict:
     """Points for one person in one Hang, with a breakdown the app can show.
     Nothing counts if you were there under MIN_HANG_MINUTES, or if it was really a solo session at home."""
     seconds = max(seconds, 0)
@@ -49,13 +54,14 @@ def score_member(*, seconds: float, phones_down_seconds: float, teammates: int, 
     active = ACTIVE_PLACE_BONUS if place_type in ACTIVE_PLACE_TYPES else 1.0
     weather = BAD_WEATHER_BONUS if bad_weather else 1.0
     bonus = NEW_PLACE_BONUS if new_place and minutes > 0 else 0
+    people_bonus = min(NEW_PERSON_BONUS * new_people, MAX_NEW_PEOPLE_BONUS) if minutes > 0 else 0
 
     too_short = minutes < MIN_HANG_MINUTES
     if too_short or solo_at_home:
-        bonus = 0
+        bonus = people_bonus = 0
         uncapped = 0
     else:
-        uncapped = round(minutes * party * phones_down * streak * active * weather) + bonus
+        uncapped = round(minutes * party * phones_down * streak * active * weather) + bonus + people_bonus
     total = max(min(uncapped, cap_left), 0)
     return {
         "minutes": minutes,
@@ -66,6 +72,8 @@ def score_member(*, seconds: float, phones_down_seconds: float, teammates: int, 
         "active_multiplier": active,
         "weather_multiplier": weather,
         "new_place_bonus": bonus,
+        "new_people": new_people,
+        "new_people_bonus": people_bonus,
         "left_area": left_area,
         "too_short": too_short,
         "solo_at_home": solo_at_home,

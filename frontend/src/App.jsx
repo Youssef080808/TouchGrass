@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import TabBar from './components/TabBar'
 import { Button, Spinner } from './components/ui'
 import HangPage from './pages/HangPage'
@@ -9,6 +9,7 @@ import Leaderboard from './pages/Leaderboard'
 import MapPage from './pages/MapPage'
 import Onboarding, { PENDING_JOIN_KEY } from './pages/Onboarding'
 import Profile from './pages/Profile'
+import { syncPush } from './lib/push'
 import { useUser } from './user'
 
 // Someone scanned a QR code before signing up: remember the code, join right after onboarding.
@@ -28,6 +29,22 @@ function Shell({ children }) {
 export default function App() {
   const { user, loading, offline, refresh } = useUser()
   const location = useLocation()
+  const navigate = useNavigate()
+
+  // Tapping a notification while the app is open: the service worker asks us to switch screens.
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return undefined
+    const onMessage = (e) => {
+      if (e.data?.type === 'navigate' && typeof e.data.url === 'string') navigate(e.data.url)
+    }
+    navigator.serviceWorker.addEventListener('message', onMessage)
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage)
+  }, [navigate])
+
+  // Signed in: if this browser has notifications on, make sure the server still has it.
+  useEffect(() => {
+    if (user?.id) syncPush()
+  }, [user?.id])
 
   if (loading) {
     return (

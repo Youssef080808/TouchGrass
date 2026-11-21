@@ -1,7 +1,8 @@
-import { Check, Flame, FlaskConical, Hexagon, LogOut, MapPin, Monitor, Moon, Palette, Sparkles, Sun } from 'lucide-react'
+import { Check, Flame, FlaskConical, Handshake, Hexagon, LogOut, MapPin, Monitor, Moon, Palette, Sparkles, Sun } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import AnimatedNumber from '../components/AnimatedNumber'
+import NotificationsCard from '../components/NotificationsCard'
 import TeamCard from '../components/TeamCard'
 import { Avatar, Button, Card, ErrorText, Rise, SectionTitle } from '../components/ui'
 import { DEMO_MODE } from '../config'
@@ -126,6 +127,7 @@ export default function Profile() {
           <HeaderStat icon={<Sparkles className="size-5 text-lime" aria-hidden />} value={user.points} label="points" />
           <HeaderStat icon={<Flame className="size-5 text-orange-400" aria-hidden />} value={user.streak} label="day streak" />
           <HeaderStat icon={<Hexagon className="size-5 text-sky-300" aria-hidden />} value={zones} label="team zones" />
+          <HeaderStat icon={<Handshake className="size-5 text-pink-300" aria-hidden />} value={user.people_met ?? 0} label="people met" />
         </div>
       </header>
 
@@ -139,6 +141,10 @@ export default function Profile() {
 
         <Rise>
           <TeamCard />
+        </Rise>
+
+        <Rise>
+          <NotificationsCard />
         </Rise>
 
         <Rise i={1}>

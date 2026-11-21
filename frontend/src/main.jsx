@@ -11,7 +11,10 @@ import '@fontsource/barlow-condensed/700.css'
 import '@fontsource/barlow-condensed/800.css'
 import './index.css'
 import App from './App'
+import { registerServiceWorker } from './lib/push'
 import { UserProvider } from './user'
+
+registerServiceWorker() // shows notifications, even when the app is closed
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

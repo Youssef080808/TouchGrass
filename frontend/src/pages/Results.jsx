@@ -1,4 +1,4 @@
-import { CloudRain, Dumbbell, Flag, Flame, Hexagon, Map as MapIcon, MapPinOff, Shield, Smartphone, Sparkles, Timer, Users } from 'lucide-react'
+import { CloudRain, Dumbbell, Flag, Flame, Handshake, Hexagon, Map as MapIcon, MapPinOff, Shield, Smartphone, Sparkles, Timer, Users } from 'lucide-react'
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import LiquidText from '../components/LiquidText'
@@ -6,6 +6,11 @@ import GlassFold from '../components/GlassFold'
 import { Avatar, Button, Card, Rise, SectionTitle, TeamDot } from '../components/ui'
 import { celebrate } from '../lib/confetti'
 import { BUZZ, haptic } from '../lib/haptics'
+
+/** "Priya", "Priya and Sam", "Priya, Sam and Leah" */
+function listNames(names) {
+  return names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
 
 function Tile({ icon, label, value, on, i }) {
   return (
@@ -120,7 +125,13 @@ export default function Results({ hang, me }) {
               {b.active_multiplier > 1 && <Tile i={4} icon={<Dumbbell className="size-4" aria-hidden />} label="Active place" value={`x${b.active_multiplier}`} on />}
               {b.weather_multiplier > 1 && <Tile i={5} icon={<CloudRain className="size-4" aria-hidden />} label="Braved weather" value={`x${b.weather_multiplier}`} on />}
               {b.new_place_bonus > 0 && <Tile i={6} icon={<Sparkles className="size-4" aria-hidden />} label="New place" value={`+${b.new_place_bonus}`} on />}
+              {b.new_people_bonus > 0 && <Tile i={7} icon={<Handshake className="size-4" aria-hidden />} label="New people" value={`+${b.new_people_bonus}`} on />}
             </div>
+            {b.new_people_names?.length > 0 && (
+              <p className="mt-3 flex items-center gap-2 rounded-2xl bg-lime/30 px-3 py-2 text-sm font-semibold dark:bg-lime/15">
+                <Handshake className="size-4 shrink-0" aria-hidden /> First Hang with {listNames(b.new_people_names)}!
+              </p>
+            )}
             {b.left_area && (
               <p className="mt-3 flex items-center gap-2 rounded-2xl bg-danger-soft px-3 py-2 text-sm text-danger">
                 <MapPinOff className="size-4 shrink-0" aria-hidden /> You went home, so your time stopped when you left.

@@ -7,6 +7,7 @@ HangMember   who was in a Hang, when they joined and left, their phones-down bon
 HexScore     points a team earned in one map hexagon (territory is the sum, fading over time)
 Notification Friend or Foe alerts and other messages
 TeamJoinRequest someone asking to join a team; any member can accept or decline
+PushSubscription a browser that agreed to get notifications (phone, laptop...)
 """
 from datetime import date, datetime
 
@@ -68,6 +69,9 @@ class Hang(Base):
     hex_owner_before_id: Mapped[int | None] = mapped_column(Integer)
     # host / no_checkins (nobody opened the app for hours) / everyone_left
     end_reason: Mapped[str | None] = mapped_column(String(20))
+    # Optional timer the host sets ("buzz us in 1 h"): everyone gets a notification when it's up
+    timer_ends_at: Mapped[datetime | None] = mapped_column(DateTime)
+    timer_sent_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     host: Mapped[User] = relationship()
     members: Mapped[list["HangMember"]] = relationship(
@@ -138,3 +142,15 @@ class TeamJoinRequest(Base):
     user: Mapped[User] = relationship(foreign_keys=[user_id])
     team: Mapped[Team] = relationship()
     decided_by: Mapped[User | None] = relationship(foreign_keys=[decided_by_id])
+
+
+class PushSubscription(Base):
+    """A browser that turned on notifications. One person can have several (phone, laptop)."""
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    endpoint: Mapped[str] = mapped_column(String(1024), unique=True)  # address at the browser's push service
+    p256dh: Mapped[str] = mapped_column(String(200))                   # keys for encrypting messages to it
+    auth: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

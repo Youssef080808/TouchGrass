@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse
 
 from .config import CORS_ORIGINS, STATIC_DIR
 from .db import Base, DB_URL, add_missing_columns, engine
-from .routers import game, hangs, teams, users
+from .routers import game, hangs, push, teams, users
 
 
 @asynccontextmanager
@@ -40,9 +40,19 @@ async def lifespan(app: FastAPI):
                 log.exception("Couldn't check for forgotten Hangs")
             await asyncio.sleep(60)
 
-    task = asyncio.create_task(end_forgotten_hangs())
+    async def send_hang_timers():
+        # Every 5 seconds: "Time's up!" notifications for Hangs whose timer ran out.
+        while True:
+            try:
+                await run_in_threadpool(hangs.send_due_timers)
+            except Exception:
+                log.exception("Couldn't send Hang timer notifications")
+            await asyncio.sleep(5)
+
+    tasks = [asyncio.create_task(end_forgotten_hangs()), asyncio.create_task(send_hang_timers())]
     yield
-    task.cancel()
+    for task in tasks:
+        task.cancel()
 
 
 app = FastAPI(title="Turfed API", version="0.1.0", lifespan=lifespan)
@@ -57,6 +67,7 @@ app.include_router(users.router, prefix="/api")
 app.include_router(teams.router, prefix="/api")
 app.include_router(hangs.router, prefix="/api")
 app.include_router(game.router, prefix="/api")
+app.include_router(push.router, prefix="/api")
 
 
 @app.get("/api/health")

@@ -95,6 +95,9 @@ Open that link on your phones. Everything (app + API + live updates) goes throug
 - Set `POINTS_TIME_SCALE=60` so each real second counts as a minute. A 1-minute live Hang then earns real points.
 - The QR code holds a link (`/join/CODE`), so judges scan it with their normal camera, sign up, and land in your Hang.
 - Players must be within 100 m to join (`JOIN_RADIUS_M`). Make it bigger if the demo room's GPS is poor.
+- Notifications on a laptop: turn them on in the Me tab, allow your browser in macOS System Settings >
+  Notifications, and turn off Focus. For a second player use another Chrome profile, not incognito (incognito
+  blocks notifications). With `POINTS_TIME_SCALE=60` a 30-minute Hang timer goes off after 30 seconds.
 - `python seed.py --reset` wipes everything and reloads the sample data before you present. Also run it after
   pulling changes that add database columns (SQLite doesn't update existing tables).
 
@@ -102,7 +105,8 @@ Open that link on your phones. Everything (app + API + live updates) goes throug
 
 - **Points:** minutes together × party bonus (+0.5 per teammate, +0.3 per other player, max 3×) × phones-down
   bonus (up to 1.5×) × streak bonus (+10% per day, max +50%) × active place (+20%) × bad weather (+20%), plus 25
-  for a new place. Daily cap 300. See `backend/app/points.py`.
+  for a new place, plus 15 for each person you've never been in a Hang with (up to 45), so meeting new people
+  pays. Daily cap 300. See `backend/app/points.py`.
 - **Locking your phone is fine:** your time counts from check-in to check-out (or until the host ends the Hang).
   A website stops running when the phone locks, so time is verified with location at check-in and check-out.
 - **Phones-down bonus (optional):** keep the app open on the black screen with the phone face-down. The app sends
@@ -126,6 +130,11 @@ Open that link on your phones. Everything (app + API + live updates) goes throug
 - **Teams:** you can't just put yourself on a team. Asking to join sends a request to everyone on it, and you're
   in once any one of them accepts (the first answer counts). Empty teams are open. You can leave, or ask to
   switch to another team and move over when they accept. See `backend/app/routers/teams.py`.
+- **Notifications (Web Push):** real notifications, even when the app is closed, so phones can stay away. The host
+  can set a timer ("buzz us in 1 h") and everyone hears when it's up; people also hear when a Hang ends (with
+  their points), when someone asks to join their team, and when a rival takes their zone. Works in laptop
+  browsers from a normal tab; on iPhone only once the site is added to the Home Screen. Keys are made on first
+  run (`backend/vapid.json`, git-ignored). See `backend/app/notify.py` and `frontend/public/sw.js`.
 - **Territory:** the map uses Uber's H3 hexagons (about 350 m across). Each Hang adds each member's points to
   their team in that hexagon. Scores fade 10% a day, so zones must be defended. Most points owns it; within 20% is
   "contested". See `backend/app/territory.py`.

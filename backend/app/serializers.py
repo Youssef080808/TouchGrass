@@ -1,5 +1,6 @@
 """Turn database rows into the JSON the app receives."""
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session, object_session
 
 from . import territory
 from .models import Hang, HangMember, Team, User
@@ -15,7 +16,16 @@ def team_out(team: Team | None) -> dict | None:
     return {"id": team.id, "name": team.name, "color": team.color}
 
 
+def people_met(db: Session, user_id: int, exclude_hang_id: int | None = None) -> set[int]:
+    """Everyone you've been in a finished Hang with."""
+    mine = select(HangMember.hang_id).join(Hang).where(
+        HangMember.user_id == user_id, Hang.status == "ended", Hang.id != exclude_hang_id)
+    return set(db.scalars(select(HangMember.user_id).where(
+        HangMember.hang_id.in_(mine), HangMember.user_id != user_id)))
+
+
 def user_out(user: User) -> dict:
+    db = object_session(user)
     return {
         "id": user.id,
         "name": user.name,
@@ -24,6 +34,7 @@ def user_out(user: User) -> dict:
         "points": user.points,
         "streak": user.streak,
         "has_home": user.home_lat is not None,
+        "people_met": len(people_met(db, user.id)) if db else 0,
     }
 
 
@@ -73,6 +84,7 @@ def hang_out(db: Session, hang: Hang) -> dict:
         "bad_weather": hang.bad_weather,
         "started_at": iso(hang.started_at),
         "ended_at": iso(hang.ended_at),
+        "timer_ends_at": iso(hang.timer_ends_at),
         "end_reason": hang.end_reason,
         "members": members,
         "hex_owner": None,

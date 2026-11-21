@@ -34,6 +34,12 @@ PLACE_RADIUS_M = _float("PLACE_RADIUS_M", 400)                    # "I'm here" a
 HEX_RESOLUTION = _int("HEX_RESOLUTION", 9)                        # H3 res 9 = hexes about 350 m across
 TERRITORY_DECAY_PER_DAY = _float("TERRITORY_DECAY_PER_DAY", 0.9)  # territory points keep 90% per day
 
+# Web Push notifications. Leave the keys empty and the server makes a pair once and keeps it in
+# backend/vapid.json (git-ignored). Changing keys means everyone has to turn notifications on again.
+VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
+VAPID_SUBJECT = os.getenv("VAPID_SUBJECT") or "mailto:turfed@example.com"  # who push services can contact
+
 CORS_ORIGINS = [o.strip() for o in (os.getenv("CORS_ORIGINS") or "*").split(",") if o.strip()]
 
 # Where the built front end lives (FastAPI serves it so the whole app is one URL).

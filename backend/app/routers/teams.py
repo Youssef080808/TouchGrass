@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from .. import notify
 from ..auth import current_user
 from ..db import get_db
 from ..models import Notification, Team, TeamJoinRequest, User
@@ -64,6 +65,10 @@ def request_to_join(db: Session, user: User, team: Team) -> TeamJoinRequest:
     if _member_count(db, team.id) == 0:
         req.status, req.decided_at = "accepted", req.created_at
         user.team_id = team.id
+    else:
+        members = db.scalars(select(User.id).where(User.team_id == team.id)).all()
+        notify.send(members, "Join request", f"{user.name} wants to join {team.name}. Anyone on the team can accept.",
+                    "/me")
     db.add(req)
     db.flush()
     return req
@@ -161,6 +166,8 @@ def _answer(db: Session, user: User, request_id: int, accept: bool) -> dict:
         message = f"{r.team.name} declined your request to join. You can ask another team."
     db.add(Notification(user_id=r.user_id, kind="team_joined" if accept else "team_declined", message=message))
     db.commit()
+    notify.send([r.user_id], f"You're on {r.team.name}!" if accept else "Join request declined", message,
+                "/" if accept else "/me")
     return my_team_out(db, user)
 
 

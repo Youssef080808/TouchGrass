@@ -6,6 +6,7 @@ import { api } from '../api'
 import { RollingTimer } from '../components/AnimatedNumber'
 import BonusRing from '../components/BonusRing'
 import GlowRocker from '../components/GlowRocker'
+import HangTimer from '../components/HangTimer'
 import PhoneDownOverlay from '../components/PhoneDownOverlay'
 import { Avatar, Button, Card, ErrorText, Rise, SectionTitle, Spinner, TeamDot } from '../components/ui'
 import { useHang } from '../hooks/useHang'
@@ -302,6 +303,12 @@ export default function HangPage() {
           <p role="status" className="rounded-2xl bg-warn-soft px-3 py-2 text-sm text-warn">
             {pauseNote} Your time together still counts.
           </p>
+        )}
+
+        {active && stillHere && (
+          <Rise i={1}>
+            <HangTimer hang={hang} isHost={isHost} onHang={setHang} />
+          </Rise>
         )}
 
         {hang.kind === 'group' && stillHere && (

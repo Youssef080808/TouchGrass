@@ -6,3 +6,4 @@ h3>=4.1
 httpx>=0.27
 python-dotenv>=1.0
 tzdata
+pywebpush>=2.0

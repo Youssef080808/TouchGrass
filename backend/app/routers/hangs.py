@@ -16,6 +16,9 @@ How time is verified (people can lock their phones and put them away):
 - Forgotten Hangs: if nobody opens the app for NO_CHECKIN_END_HOURS, the Hang ends by itself and time
   counts only up to the last check-in. It also ends once everyone has left.
 
+Notifications bring people back to the app only when it's worth it: the host can set a timer ("buzz us in
+1 h"), and everyone hears when the Hang is over and what they earned. See notify.py.
+
 Live updates: the app opens a WebSocket at /api/ws/hangs/{id}. The server checks the Hang every
 2 seconds and pushes the new state when something changed.
 At 100x the users you'd swap this check for push-based pub/sub (Postgres LISTEN/NOTIFY or Redis).
@@ -31,7 +34,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .. import territory
+from .. import notify, territory
 from ..auth import current_user
 from ..config import (DAILY_POINTS_CAP, HOME_RADIUS_M, JOIN_RADIUS_M, MIN_HANG_MINUTES, NO_CHECKIN_END_HOURS,
                       PLACE_RADIUS_M, POINTS_TIME_SCALE)
@@ -39,7 +42,7 @@ from ..db import SessionLocal, get_db
 from ..geo import distance_m, hex_for
 from ..models import Hang, HangMember, HexScore, User
 from ..points import score_member
-from ..serializers import PHONES_DOWN_HEARTBEAT_GRACE_S, counted_party, hang_out
+from ..serializers import PHONES_DOWN_HEARTBEAT_GRACE_S, counted_party, hang_out, people_met
 from ..timeutil import local_day_start_utc, local_today, utcnow
 from ..weather import current_weather
 
@@ -65,6 +68,10 @@ class StartHang(Location):
 
 class JoinHang(Location):
     code: str = Field(min_length=4, max_length=8)
+
+
+class HangTimer(BaseModel):
+    minutes: int | None = Field(default=None, ge=1, le=600)  # None clears the timer
 
 
 class PhonesDown(BaseModel):
@@ -171,6 +178,7 @@ def _auto_end_if_due(db: Session, hang: Hang) -> bool:
             return False
         _finish_hang(db, hang, last, "no_checkins")  # time counts only up to the last check-in
     db.commit()
+    _announce_end(hang)
     return True
 
 
@@ -181,6 +189,38 @@ def end_overdue_hangs() -> int:
         for hang in db.scalars(select(Hang).where(Hang.status == "active")).all():
             ended += _auto_end_if_due(db, hang)
     return ended
+
+
+def send_due_timers() -> int:
+    """Run every few seconds from main.py: when a Hang's timer runs out, notify everyone still in it."""
+    now = utcnow()
+    sent = 0
+    with SessionLocal() as db:
+        due = db.scalars(select(Hang).where(
+            Hang.status == "active", Hang.timer_ends_at.is_not(None), Hang.timer_ends_at <= now,
+            Hang.timer_sent_at.is_(None))).all()
+        for hang in due:
+            hang.timer_sent_at = now
+            db.commit()
+            where = f"Your Hang at {hang.place_name}" if hang.place_name else "Your Hang"
+            here = [m.user_id for m in hang.members if m.left_at is None]
+            if hang.host_id in here:
+                notify.send([hang.host_id], "Time's up!", f"{where} is done. Tap to end it and collect everyone's points.",
+                            f"/hang/{hang.id}")
+            notify.send([uid for uid in here if uid != hang.host_id], "Time's up!",
+                        f"{where} is done. {hang.host.name} can end it now so everyone gets their points.",
+                        f"/hang/{hang.id}")
+            sent += 1
+    return sent
+
+
+def _announce_end(hang: Hang, skip_user_id: int | None = None) -> None:
+    """After a Hang ends, tell each person (except whoever ended it) what they earned."""
+    where = f" at {hang.place_name}" if hang.place_name else ""
+    for m in hang.members:
+        if m.user_id != skip_user_id:
+            notify.send([m.user_id], f"Hang over: +{m.points_earned or 0} points",
+                        f"Your Hang{where} just ended. Tap to see how you scored.", f"/hang/{hang.id}")
 
 
 def _stop_time(m: HangMember, loc_ok: bool, now: datetime) -> tuple[datetime, str]:
@@ -300,6 +340,22 @@ def phones_down(hang_id: int, body: PhonesDown, user: User = Depends(current_use
     return hang_out(db, hang)
 
 
+@router.post("/hangs/{hang_id}/timer")
+def set_timer(hang_id: int, body: HangTimer, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Host sets "buzz us in N minutes" (or clears it). Everyone still in the Hang gets a notification when
+    it's up. The demo speed-up (POINTS_TIME_SCALE) applies, so with 60 a 30-minute timer takes 30 seconds."""
+    hang = _get_hang(db, hang_id)
+    if hang.host_id != user.id:
+        raise HTTPException(403, "Only the host can set the timer")
+    if hang.status != "active":
+        raise HTTPException(409, "This Hang already ended")
+    hang.timer_ends_at = (None if body.minutes is None
+                          else utcnow() + timedelta(seconds=body.minutes * 60 / POINTS_TIME_SCALE))
+    hang.timer_sent_at = None
+    db.commit()
+    return hang_out(db, hang)
+
+
 @router.post("/hangs/{hang_id}/checkout")
 def checkout(hang_id: int, body: Location, user: User = Depends(current_user), db: Session = Depends(get_db)):
     """Leave before the Hang ends. Your points are added when the host ends the Hang."""
@@ -326,6 +382,11 @@ def _finish_hang(db: Session, hang: Hang, end_at: datetime, reason: str) -> None
     host = db.get(User, hang.host_id)
     solo_at_home = not _someone_else_stayed(hang, end_at) and not _solo_counts(hang, host)
 
+    # People who really took part: stayed MIN_HANG_MINUTES and didn't just go home. They count for the
+    # new-people bonus (so someone popping in for a second doesn't count).
+    stayed = [m for m in hang.members if m.left_reason != "left_area"
+              and _scaled_minutes(m.joined_at, min(m.left_at or end_at, end_at)) >= MIN_HANG_MINUTES]
+
     for m in hang.members:
         u = m.user
         stop = min(m.left_at or end_at, end_at)   # everyone still checked in stops when the Hang ends
@@ -345,6 +406,8 @@ def _finish_hang(db: Session, hang: Hang, end_at: datetime, reason: str) -> None
             .where(HangMember.user_id == u.id, Hang.hex_id == hang.hex_id,
                    Hang.status == "ended", Hang.id != hang.id, HangMember.points_earned > 0)
         )
+        met_before = people_met(db, u.id, exclude_hang_id=hang.id)
+        new_people = [o.user.name for o in stayed if o.user_id != u.id and o.user_id not in met_before]
         result = score_member(
             seconds=(stop - m.joined_at).total_seconds(),
             phones_down_seconds=m.phones_down_seconds or 0,
@@ -352,7 +415,9 @@ def _finish_hang(db: Session, hang: Hang, end_at: datetime, reason: str) -> None
             new_place=not been_here, bad_weather=hang.bad_weather,
             left_area=m.left_reason == "left_area", cap_left=DAILY_POINTS_CAP - int(earned_today),
             solo_at_home=solo_at_home if m.user_id == hang.host_id else False,
+            new_people=len(new_people),
         )
+        result["new_people_names"] = new_people
         m.points_earned, m.breakdown = result["total"], result
         u.points += result["total"]
         if result["total"] > 0 and u.team_id:
@@ -362,7 +427,7 @@ def _finish_hang(db: Session, hang: Hang, end_at: datetime, reason: str) -> None
     db.flush()
     owner_after = territory.owner_of(db, hang.hex_id)
     territory.notify_friend_or_foe(db, hang.hex_id, hang.place_name or "a zone near you",
-                                   owner_before, owner_after)
+                                   owner_before, owner_after, skip_push={m.user_id for m in hang.members})
 
 
 @router.post("/hangs/{hang_id}/end")
@@ -379,6 +444,7 @@ def end_hang(hang_id: int, body: Location, user: User = Depends(current_user), d
 
     _finish_hang(db, hang, utcnow(), "host")
     db.commit()
+    _announce_end(hang, skip_user_id=user.id)
     return hang_out(db, hang)
 
 

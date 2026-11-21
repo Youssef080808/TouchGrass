@@ -12,6 +12,7 @@ from collections import defaultdict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from . import notify
 from .config import TERRITORY_DECAY_PER_DAY
 from .models import HexScore, Notification, Team, User
 from .timeutil import utcnow
@@ -46,19 +47,27 @@ def owner_of(db: Session, hex_id: str) -> int | None:
     return owner_from(standings(db, [hex_id]).get(hex_id, {}))[0]
 
 
-def notify_friend_or_foe(db: Session, hex_id: str, place: str, before: int | None, after: int | None) -> None:
-    """When a hex changes hands, tell both teams. The losing team gets the Friend or Foe choice."""
+def notify_friend_or_foe(db: Session, hex_id: str, place: str, before: int | None, after: int | None,
+                         skip_push: set[int] = frozenset()) -> None:
+    """When a hex changes hands, tell both teams. The losing team gets the Friend or Foe choice.
+    skip_push: people who don't need a push about it (they were in the Hang and see it on the results screen)."""
     if before is None or after is None or before == after:
         return
     winner, loser = db.get(Team, after), db.get(Team, before)
     if winner is None or loser is None:
         return
-    for user in db.scalars(select(User).where(User.team_id == loser.id)):
+    losers = db.scalars(select(User).where(User.team_id == loser.id)).all()
+    winners = db.scalars(select(User).where(User.team_id == winner.id)).all()
+    notify.send([u.id for u in losers if u.id not in skip_push], "Friend or foe?",
+                f"{winner.name} just took {place} from your team. Fight back, or team up?", "/")
+    notify.send([u.id for u in winners if u.id not in skip_push], "Zone captured!",
+                f"Your team took {place} from {loser.name}.", "/map")
+    for user in losers:
         db.add(Notification(
             user_id=user.id, kind="friend_or_foe", hex_id=hex_id, other_team_id=winner.id,
             message=f"{winner.name} just took {place} from your team. Fight back, or invite them to a joint Hang?",
         ))
-    for user in db.scalars(select(User).where(User.team_id == winner.id)):
+    for user in winners:
         db.add(Notification(
             user_id=user.id, kind="territory_won", hex_id=hex_id, other_team_id=loser.id,
             message=f"Your team took {place} from {loser.name}!",
