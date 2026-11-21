@@ -2,6 +2,7 @@ import { ArrowLeft, Check, Hexagon, MapPin, Plus, Smartphone, Users } from 'luci
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import { LogoMark } from '../components/Logo'
 import { Button, ErrorText, Rise } from '../components/ui'
 import { APP_NAME, TAGLINE, TEAM_COLORS } from '../config'
 import { getPosition } from '../lib/location'
@@ -116,11 +117,9 @@ export default function Onboarding() {
 
         <div className="relative">
           <Rise>
-            <p className="font-display text-base font-bold uppercase tracking-[0.3em] text-lime">Phones down</p>
-            <h1 className="mt-3 font-display text-[76px] font-extrabold uppercase leading-[0.85] tracking-tight">
-              Touch
-              <br />
-              <span className="text-lime">Grass</span>
+            <LogoMark size={76} className="motion-safe:animate-pop drop-shadow-xl" title="Turfed logo" />
+            <h1 className="mt-6 font-display text-[88px] font-extrabold uppercase leading-[0.85] tracking-tight">
+              Turf<span className="text-lime">ed</span>
             </h1>
             <p className="mt-5 max-w-[18rem] text-xl leading-snug text-white/80">{TAGLINE}</p>
           </Rise>

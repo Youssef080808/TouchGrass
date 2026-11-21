@@ -1,4 +1,4 @@
-"""TouchGrass API.
+"""Turfed API.
 
 Run locally:  uvicorn app.main:app --reload   (from the backend folder)
 API docs:     http://localhost:8000/docs
@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="TouchGrass API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Turfed API", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,

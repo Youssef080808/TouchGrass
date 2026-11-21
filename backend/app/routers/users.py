@@ -48,7 +48,7 @@ def list_teams(db: Session = Depends(get_db)):
 @router.post("/users")
 def sign_up(body: SignUp, db: Session = Depends(get_db)):
     if not body.is_adult:
-        raise HTTPException(400, "TouchGrass is for people 18 and older")
+        raise HTTPException(400, "Turfed is for people 18 and older")
     if body.team_id is not None:
         team = db.get(Team, body.team_id)
         if team is None:
