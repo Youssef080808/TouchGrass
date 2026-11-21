@@ -1,13 +1,20 @@
-import { Flag, Map as MapIcon, MapPinOff } from 'lucide-react'
+import { CloudRain, Dumbbell, Flame, Hexagon, Map as MapIcon, MapPinOff, Smartphone, Sparkles, Timer, Users } from 'lucide-react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Avatar, Button, Card, TeamDot } from '../components/ui'
+import { CountUp } from '../components/AnimatedNumber'
+import { Avatar, Button, Card, Rise, SectionTitle, TeamDot } from '../components/ui'
+import { celebrate } from '../lib/confetti'
 
-function Row({ label, value, highlight }) {
+function Tile({ icon, label, value, on, i }) {
   return (
-    <div className="flex items-center justify-between py-2 text-[15px]">
-      <span className="text-muted">{label}</span>
-      <span className={`font-semibold ${highlight ? 'text-grass' : ''}`}>{value}</span>
-    </div>
+    <Rise i={i}>
+      <div className={`flex h-full flex-col justify-between rounded-2xl p-3 ${on ? 'bg-lime text-on-accent' : 'bg-chip text-ink'}`}>
+        <span className={`flex items-center gap-1.5 text-[13px] font-semibold ${on ? '' : 'text-muted'}`}>
+          {icon} {label}
+        </span>
+        <span className="mt-2 font-display text-[28px] font-bold leading-none">{value}</span>
+      </div>
+    </Rise>
   )
 }
 
@@ -15,35 +22,50 @@ function Row({ label, value, highlight }) {
 export default function Results({ hang, me }) {
   const navigate = useNavigate()
   const b = me?.breakdown
+  const points = me?.points_earned ?? 0
+
+  useEffect(() => {
+    if (points > 0) {
+      const t = setTimeout(celebrate, 350)
+      return () => clearTimeout(t)
+    }
+    return undefined
+  }, [points])
+
+  const ranked = [...hang.members].sort((x, y) => (y.points_earned ?? 0) - (x.points_earned ?? 0))
 
   return (
     <div className="min-h-dvh bg-canvas pb-10">
-      <header className="pt-safe bg-brand px-5 pb-10 text-center text-white">
-        <p className="pt-10 text-sm uppercase tracking-[0.2em] text-white/50">Hang over</p>
-        <p className="mt-3 text-7xl font-black text-lime">+{me?.points_earned ?? 0}</p>
-        <p className="mt-1 text-white/70">points{hang.place_name ? ` at ${hang.place_name}` : ''}</p>
+      <header className="pt-safe bg-hex rounded-b-[36px] bg-brand px-5 pb-12 text-center text-white">
+        <p className="pt-10 font-display text-lg font-bold uppercase tracking-[0.3em] text-white/50">Hang over</p>
+        <p className="mt-2 font-display text-[96px] font-extrabold leading-none text-lime motion-safe:animate-pop">
+          +<CountUp to={points} />
+        </p>
+        <p className="mt-1 text-[15px] text-white/70">points{hang.place_name ? ` at ${hang.place_name}` : ''}</p>
       </header>
 
-      <div className="-mt-5 space-y-4 px-4">
+      <div className="-mt-6 space-y-4 px-4">
         {b && (
-          <Card>
-            <h2 className="font-semibold">How you scored</h2>
-            <div className="mt-2 divide-y divide-line">
-              <Row label="Minutes together" value={b.minutes} />
-              <Row label="Party bonus" value={`x${b.party_multiplier}`} highlight={b.party_multiplier > 1} />
-              <Row
-                label={`Phones-down bonus (${Math.round(b.phones_down_share * 100)}% of the time)`}
+          <Card className="shadow-lg shadow-black/5">
+            <SectionTitle>How you scored</SectionTitle>
+            <div className="grid grid-cols-2 gap-2">
+              <Tile i={0} icon={<Timer className="size-4" aria-hidden />} label="Minutes" value={b.minutes} />
+              <Tile i={1} icon={<Users className="size-4" aria-hidden />} label="Party" value={`x${b.party_multiplier}`} on={b.party_multiplier > 1} />
+              <Tile
+                i={2}
+                icon={<Smartphone className="size-4 rotate-180" aria-hidden />}
+                label={`Phones down ${Math.round(b.phones_down_share * 100)}%`}
                 value={`x${b.phones_down_multiplier}`}
-                highlight={b.phones_down_multiplier > 1}
+                on={b.phones_down_multiplier > 1}
               />
-              <Row label="Streak bonus" value={`x${b.streak_multiplier}`} highlight={b.streak_multiplier > 1} />
-              {b.active_multiplier > 1 && <Row label="Active place" value={`x${b.active_multiplier}`} highlight />}
-              {b.weather_multiplier > 1 && <Row label="Braved the weather" value={`x${b.weather_multiplier}`} highlight />}
-              {b.new_place_bonus > 0 && <Row label="New place" value={`+${b.new_place_bonus}`} highlight />}
+              <Tile i={3} icon={<Flame className="size-4" aria-hidden />} label="Streak" value={`x${b.streak_multiplier}`} on={b.streak_multiplier > 1} />
+              {b.active_multiplier > 1 && <Tile i={4} icon={<Dumbbell className="size-4" aria-hidden />} label="Active place" value={`x${b.active_multiplier}`} on />}
+              {b.weather_multiplier > 1 && <Tile i={5} icon={<CloudRain className="size-4" aria-hidden />} label="Braved weather" value={`x${b.weather_multiplier}`} on />}
+              {b.new_place_bonus > 0 && <Tile i={6} icon={<Sparkles className="size-4" aria-hidden />} label="New place" value={`+${b.new_place_bonus}`} on />}
             </div>
             {b.left_area && (
               <p className="mt-3 flex items-center gap-2 rounded-2xl bg-danger-soft px-3 py-2 text-sm text-danger">
-                <MapPinOff className="size-4 shrink-0" /> You left the Hang area, so your time stopped when you left.
+                <MapPinOff className="size-4 shrink-0" aria-hidden /> You left the Hang area, so your time stopped when you left.
               </p>
             )}
             {b.capped && <p className="mt-3 text-sm text-muted">You hit today's points limit. Come back tomorrow!</p>}
@@ -51,40 +73,43 @@ export default function Results({ hang, me }) {
         )}
 
         {hang.hex_owner && (
-          <Card className="flex items-center gap-3">
-            <div className="rounded-2xl p-2.5" style={{ backgroundColor: `${hang.hex_owner.color}22` }}>
-              <Flag className="size-5" style={{ color: hang.hex_owner.color }} />
-            </div>
-            <p className="text-[15px]">
-              <span className="font-semibold">{hang.hex_owner.name}</span> holds this zone now.
-            </p>
-          </Card>
+          <Rise i={3}>
+            <Card className="flex items-center gap-3">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: `${hang.hex_owner.color}26` }}>
+                <Hexagon className="size-6" style={{ color: hang.hex_owner.color, fill: `${hang.hex_owner.color}55` }} aria-hidden />
+              </div>
+              <p className="text-[15px]">
+                <span className="font-semibold">{hang.hex_owner.name}</span> holds this zone now.
+              </p>
+            </Card>
+          </Rise>
         )}
 
         {hang.members.length > 1 && (
-          <Card>
-            <h2 className="mb-3 font-semibold">Everyone</h2>
-            <ul className="space-y-3">
-              {[...hang.members]
-                .sort((x, y) => (y.points_earned ?? 0) - (x.points_earned ?? 0))
-                .map((m) => (
+          <Rise i={4}>
+            <Card>
+              <SectionTitle>Everyone</SectionTitle>
+              <ul className="space-y-3">
+                {ranked.map((m, i) => (
                   <li key={m.user_id} className="flex items-center gap-3">
+                    <span className="w-5 text-center font-display text-lg font-bold text-faint">{i + 1}</span>
                     <Avatar name={m.name} color={m.team?.color} size={36} />
-                    <span className="flex-1 font-medium">{m.name}</span>
+                    <span className="flex-1 truncate font-semibold">{m.name}</span>
                     <TeamDot color={m.team?.color} />
-                    <span className="w-14 text-right font-semibold">+{m.points_earned ?? 0}</span>
+                    <span className="w-14 text-right font-display text-xl font-bold">+{m.points_earned ?? 0}</span>
                   </li>
                 ))}
-            </ul>
-          </Card>
+              </ul>
+            </Card>
+          </Rise>
         )}
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2.5 pt-1">
           <Button variant="secondary" onClick={() => navigate('/', { replace: true })}>
             Home
           </Button>
-          <Button onClick={() => navigate('/map', { replace: true })}>
-            <MapIcon className="size-5" /> See the map
+          <Button variant="lime" onClick={() => navigate('/map', { replace: true })}>
+            <MapIcon className="size-5" aria-hidden /> See the map
           </Button>
         </div>
       </div>

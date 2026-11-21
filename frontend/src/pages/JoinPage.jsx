@@ -31,7 +31,7 @@ export default function JoinPage() {
         <Spinner label={`Joining Hang ${code}...`} />
       ) : (
         <div className="space-y-3">
-          <h1 className="text-2xl font-bold">Couldn't join {code}</h1>
+          <h1 className="font-display text-[34px] font-extrabold uppercase leading-none">Couldn't join {code}</h1>
           <ErrorText>{error}</ErrorText>
           <Button className="w-full" onClick={join}>
             Try again

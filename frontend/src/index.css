@@ -3,10 +3,13 @@
 /* Dark mode turns on when <html> has the "dark" class (see src/theme.js) */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* App colours. Components use these names (bg-surface, text-ink, ...), and the values
-   below switch between light and dark. Change a value here to restyle the whole app. */
+/* App colours and fonts. Components use these names (bg-surface, text-ink, font-display, ...),
+   and the values below switch between light and dark. Change a value here to restyle the app. */
 @theme inline {
-  --color-brand: var(--brand);            /* headers, primary buttons */
+  --font-sans: "Barlow", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-display: "Barlow Condensed", "Barlow", ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand: var(--brand);            /* headers, hero blocks, primary buttons */
   --color-brand-light: var(--brand-light);
   --color-brand-ink: var(--brand-ink);    /* brand-coloured text and icons on cards */
   --color-on-accent: #0b1d3a;             /* text on lime */
@@ -24,6 +27,24 @@
   --color-danger-soft: var(--danger-soft);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
+
+  /* entrance animations (skipped when the phone asks for reduced motion) */
+  --animate-rise: rise 0.45s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  --animate-pop: pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-float: float 4s ease-in-out infinite;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pop {
+  0% { opacity: 0; transform: scale(0.6); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 
 :root {
@@ -38,12 +59,14 @@
   --line: #dfe6ef;
   --ink: #0f172a;
   --ink-soft: #334155;
-  --muted: #64748b;
-  --faint: #94a3b8;
+  --muted: #5b6b82;
+  --faint: #8a99ad;
   --danger: #dc2626;
   --danger-soft: #fef2f2;
   --warn: #92400e;
   --warn-soft: #fffbeb;
+  --press-lime: #84b43a;   /* the "3D" edge under lime buttons */
+  --press-brand: #040c1a;  /* the edge under navy buttons */
   color-scheme: light;
 }
 
@@ -56,16 +79,38 @@
   --canvas: #060d1b;
   --surface: #0e1a2f;
   --chip: #17253e;
-  --line: #1f2e49;
+  --line: #22324f;
   --ink: #e7eef8;
   --ink-soft: #c3cfe0;
-  --muted: #94a3b8;
-  --faint: #64748b;
+  --muted: #9aa9bf;
+  --faint: #6b7c96;
   --danger: #f87171;
   --danger-soft: #3a1219;
   --warn: #fcd34d;
   --warn-soft: #36270a;
+  --press-lime: #7aa82f;
+  --press-brand: #081a38;
   color-scheme: dark;
+}
+
+/* Honeycomb pattern for navy blocks: hexagons are the game board, so they're the brand motif */
+@utility bg-hex {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='27.7128' height='48' viewBox='0 0 27.7128 48'%3E%3Cpath d='M13.8564 0 27.7128 8v16L13.8564 32 0 24V8zM13.8564 32v16' fill='none' stroke='%23ffffff' stroke-opacity='0.07' stroke-width='1'/%3E%3C/svg%3E");
+  background-size: 27.7128px 48px;
+}
+
+/* Game-style buttons: a solid edge underneath that disappears when pressed */
+@utility press-lime {
+  box-shadow: 0 4px 0 0 var(--press-lime);
+  &:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 0 var(--press-lime); }
+}
+@utility press-brand {
+  box-shadow: 0 4px 0 0 var(--press-brand);
+  &:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 0 var(--press-brand); }
+}
+@utility press-line {
+  box-shadow: 0 3px 0 0 var(--line);
+  &:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 0 var(--line); }
 }
 
 html {
@@ -76,8 +121,35 @@ html {
 body {
   margin: 0;
   color: var(--ink);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-sans);
+  font-size: 16px;
   -webkit-font-smoothing: antialiased;
+}
+
+button,
+[role="button"],
+a,
+select,
+label[for] {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2.5px solid var(--brand-ink);
+  outline-offset: 2px;
+}
+.dark :focus-visible {
+  outline-color: #bef264;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Leaflet map pieces follow the theme */
@@ -85,7 +157,7 @@ body {
   font-family: inherit;
 }
 .leaflet-popup-content-wrapper {
-  border-radius: 14px;
+  border-radius: 16px;
 }
 .dark .leaflet-container {
   background: #1b1b1b;
