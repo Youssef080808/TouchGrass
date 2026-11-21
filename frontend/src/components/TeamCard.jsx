@@ -13,7 +13,7 @@ import { Avatar, Button, Card, ErrorText, SectionTitle } from './ui'
  */
 export default function TeamCard() {
   const { user } = useUser()
-  const { data, error: loadError, apply, load } = useMyTeam()
+  const { data, apply, load, error: loadError } = useMyTeam()
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState(null)
   const [note, setNote] = useState(null)

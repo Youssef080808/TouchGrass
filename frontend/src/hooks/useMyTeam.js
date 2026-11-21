@@ -2,10 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
 import { useUser } from '../user'
 
-/**
- * Your team, its members, join requests waiting for your team's answer, and your own pending request.
- * Pass { poll: ms } to keep checking (so new join requests show up without a reload).
- */
 // Fill in anything missing, so the screen never crashes on a partial answer. A server still running code from
 // before team switching (it wasn't restarted after a pull) answers without "requests": flag that as outdated.
 function normalize(d) {
@@ -18,6 +14,10 @@ function normalize(d) {
   }
 }
 
+/**
+ * Your team, its members, join requests waiting for your team's answer, and your own pending request.
+ * Pass { poll: ms } to keep checking (so new join requests show up without a reload).
+ */
 export function useMyTeam({ poll = 0 } = {}) {
   const { user, refresh } = useUser()
   const [data, setData] = useState(null)
@@ -37,7 +37,16 @@ export function useMyTeam({ poll = 0 } = {}) {
   )
 
   const load = useCallback(
-    () => api('/me/team').then(apply).catch((e) => setError(e.message || "Couldn't load your team")),
+    () =>
+      api('/me/team')
+        .then((d) => {
+          setError(null)
+          return apply(d)
+        })
+        .catch((e) => {
+          setError(e.message || "Couldn't load your team")
+          return null
+        }),
     [apply],
   )
 
@@ -48,5 +57,5 @@ export function useMyTeam({ poll = 0 } = {}) {
     return () => clearInterval(t)
   }, [load, poll])
 
-  return { data, error, apply, load }
+  return { data, apply, load, error }
 }

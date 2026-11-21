@@ -1,5 +1,5 @@
 import { Flag, Hexagon, LocateFixed, Shield, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { CircleMarker, MapContainer, Polygon, Popup, TileLayer } from 'react-leaflet'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api'
@@ -14,6 +14,7 @@ import { useUser } from '../user'
 /** The city as a board game: each hexagon is coloured by the team that holds it. */
 const NOBODY = '#94a3b8'
 const FLIP_AT_MS = 1150 // middle of the flip animation in index.css (0.7 s delay + half of 0.9 s)
+const BORDER_INSET = 0.985
 
 function centerOf(boundary) {
   const n = boundary.length
@@ -21,6 +22,14 @@ function centerOf(boundary) {
     lat: boundary.reduce((sum, [lat]) => sum + lat, 0) / n,
     lng: boundary.reduce((sum, [, lng]) => sum + lng, 0) / n,
   }
+}
+
+function insetBoundary(boundary) {
+  const center = centerOf(boundary)
+  return boundary.map(([lat, lng]) => [
+    center.lat + (lat - center.lat) * BORDER_INSET,
+    center.lng + (lng - center.lng) * BORDER_INSET,
+  ])
 }
 
 export default function MapPage() {
@@ -70,8 +79,31 @@ export default function MapPage() {
   return (
     <div
       className="relative h-dvh"
-      style={capture ? { '--cap-from': capture.from ?? NOBODY, '--cap-to': capture.to } : undefined}
+      style={capture ? {
+        '--cap-from': capture.from ?? NOBODY,
+        '--cap-to': capture.to,
+        '--cap-fill': target?.contested && target.owner
+          ? `url(#contested-pattern-${target.owner.id})`
+          : capture.to,
+      } : undefined}
     >
+      <svg aria-hidden="true" focusable="false" className="pointer-events-none absolute h-0 w-0 overflow-hidden">
+        <defs>
+          {legend.map((team) => (
+            <pattern
+              key={team.id}
+              id={`contested-pattern-${team.id}`}
+              patternUnits="userSpaceOnUse"
+              width="10"
+              height="10"
+              patternTransform="rotate(45)"
+            >
+              <rect width="5" height="10" fill="#f59e0b" />
+              <rect x="5" width="5" height="10" fill={team.color} />
+            </pattern>
+          ))}
+        </defs>
+      </svg>
       <MapContainer
         key={target ? 'capture' : me ? 'me' : 'default'}
         center={[center.lat, center.lng]}
@@ -95,33 +127,41 @@ export default function MapPage() {
           const ours = h.owner && h.owner.id === user.team?.id
           const isTarget = h === target
           return (
-            <Polygon
-              key={h.hex_id}
-              positions={h.boundary}
-              pathOptions={{
-                color,
-                weight: ours || isTarget ? 3 : 1.5,
-                fillColor: color,
-                fillOpacity: h.owner ? (isTarget ? 0.55 : 0.4) : 0.12,
-                dashArray: h.contested ? '6 6' : null,
-              }}
-              // A direct prop (not in pathOptions): Leaflet only reads className when the shape is first drawn
-              className={isTarget ? (capture.flipped ? 'hex-capture' : 'hex-highlight') : undefined}
-            >
-              <Popup>
-                <p className="m-0 font-display text-lg font-bold leading-tight">
-                  {h.owner ? `${h.owner.name} hold this zone` : 'Nobody holds this zone'}
-                </p>
-                {h.contested && <p className="m-0 mt-1 font-semibold text-danger">Contested! It could flip any time.</p>}
-                <ul className="m-0 mt-2 list-none space-y-1 p-0">
-                  {h.scores.map((s) => (
-                    <li key={s.id} className="flex items-center gap-2">
-                      <TeamDot color={s.color} className="size-2.5" /> {s.name}: <b>{s.points}</b> pts
-                    </li>
-                  ))}
-                </ul>
-              </Popup>
-            </Polygon>
+            <Fragment key={h.hex_id}>
+              <Polygon
+                positions={h.boundary}
+                pathOptions={{
+                  stroke: false,
+                  fillColor: h.contested ? `url(#contested-pattern-${h.owner?.id})` : color,
+                  fillOpacity: h.contested ? 0.75 : h.owner ? (isTarget ? 0.55 : 0.4) : 0.12,
+                }}
+                className={isTarget && capture.flipped ? 'hex-capture-fill' : undefined}
+              >
+                <Popup>
+                  <p className="m-0 font-display text-lg font-bold leading-tight">
+                    {h.owner ? `${h.owner.name} hold this zone` : 'Nobody holds this zone'}
+                  </p>
+                  {h.contested && <p className="m-0 mt-1 font-semibold text-danger">Contested! It could flip any time.</p>}
+                  <ul className="m-0 mt-2 list-none space-y-1 p-0">
+                    {h.scores.map((s) => (
+                      <li key={s.id} className="flex items-center gap-2">
+                        <TeamDot color={s.color} className="size-2.5" /> {s.name}: <b>{s.points}</b> pts
+                      </li>
+                    ))}
+                  </ul>
+                </Popup>
+              </Polygon>
+              <Polygon
+                positions={insetBoundary(h.boundary)}
+                interactive={false}
+                pathOptions={{
+                  color,
+                  weight: ours || isTarget ? 3 : 1.5,
+                  fill: false,
+                }}
+                className={isTarget ? (capture.flipped ? 'hex-capture-border' : 'hex-highlight') : undefined}
+              />
+            </Fragment>
           )
         })}
         {me && (
@@ -138,7 +178,7 @@ export default function MapPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <h1 className="font-display text-[30px] font-extrabold uppercase leading-none">Territory</h1>
-              <p className="mt-1 text-sm text-muted">Hang out somewhere to claim it. Dashed = contested.</p>
+              <p className="mt-1 text-sm text-muted">Hang out somewhere to claim it. Amber fill = contested.</p>
             </div>
             {user.team && (
               <span className="flex shrink-0 items-center gap-1.5 rounded-2xl bg-lime px-3 py-2 font-display text-lg font-bold leading-none text-on-accent">

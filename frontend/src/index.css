@@ -47,21 +47,33 @@
 
 /* Map: the zone your Hang just took flips over to your team's colour, then pulses.
    The colours come from --cap-from / --cap-to set on the map wrapper. */
-.hex-capture {
+.hex-capture-fill,
+.hex-capture-border {
   transform-box: fill-box;
   transform-origin: center;
+}
+.hex-capture-fill {
+  animation: hex-fill-flip 0.9s cubic-bezier(0.45, 0, 0.55, 1) 0.7s both;
+}
+.hex-capture-border {
   animation:
-    hex-flip 0.9s cubic-bezier(0.45, 0, 0.55, 1) 0.7s both,
+    hex-border-flip 0.9s cubic-bezier(0.45, 0, 0.55, 1) 0.7s both,
     hex-glow 0.7s ease-in-out 1.6s 3;
 }
 .hex-highlight {
   animation: hex-glow 0.7s ease-in-out 0.6s 3;
 }
-@keyframes hex-flip {
-  0% { transform: scaleX(1); fill: var(--cap-from); stroke: var(--cap-from); fill-opacity: 0.25; }
-  50% { transform: scaleX(0); fill: var(--cap-from); stroke: var(--cap-from); fill-opacity: 0.25; }
-  50.1% { transform: scaleX(0); fill: var(--cap-to); stroke: var(--cap-to); fill-opacity: 0.55; }
-  100% { transform: scaleX(1); fill: var(--cap-to); stroke: var(--cap-to); fill-opacity: 0.55; }
+@keyframes hex-fill-flip {
+  0% { transform: scaleX(1); fill: var(--cap-from); fill-opacity: 0.25; }
+  50% { transform: scaleX(0); fill: var(--cap-from); fill-opacity: 0.25; }
+  50.1% { transform: scaleX(0); fill: var(--cap-fill, var(--cap-to)); fill-opacity: 0.55; }
+  100% { transform: scaleX(1); fill: var(--cap-fill, var(--cap-to)); fill-opacity: 0.55; }
+}
+@keyframes hex-border-flip {
+  0% { transform: scaleX(1); stroke: var(--cap-from); }
+  50% { transform: scaleX(0); stroke: var(--cap-from); }
+  50.1% { transform: scaleX(0); stroke: var(--cap-to); }
+  100% { transform: scaleX(1); stroke: var(--cap-to); }
 }
 @keyframes hex-glow {
   0%, 100% { stroke-width: 3px; }
