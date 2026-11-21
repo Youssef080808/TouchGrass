@@ -5,7 +5,7 @@ import { Avatar, Button, Card, TeamDot } from '../components/ui'
 function Row({ label, value, highlight }) {
   return (
     <div className="flex items-center justify-between py-2 text-[15px]">
-      <span className="text-slate-500">{label}</span>
+      <span className="text-muted">{label}</span>
       <span className={`font-semibold ${highlight ? 'text-grass' : ''}`}>{value}</span>
     </div>
   )
@@ -18,7 +18,7 @@ export default function Results({ hang, me }) {
 
   return (
     <div className="min-h-dvh bg-canvas pb-10">
-      <header className="pt-safe bg-forest px-5 pb-10 text-center text-white">
+      <header className="pt-safe bg-brand px-5 pb-10 text-center text-white">
         <p className="pt-10 text-sm uppercase tracking-[0.2em] text-white/50">Hang over</p>
         <p className="mt-3 text-7xl font-black text-lime">+{me?.points_earned ?? 0}</p>
         <p className="mt-1 text-white/70">points{hang.place_name ? ` at ${hang.place_name}` : ''}</p>
@@ -28,7 +28,7 @@ export default function Results({ hang, me }) {
         {b && (
           <Card>
             <h2 className="font-semibold">How you scored</h2>
-            <div className="mt-2 divide-y divide-black/5">
+            <div className="mt-2 divide-y divide-line">
               <Row label="Minutes together" value={b.minutes} />
               <Row label="Party bonus" value={`x${b.party_multiplier}`} highlight={b.party_multiplier > 1} />
               <Row
@@ -42,11 +42,11 @@ export default function Results({ hang, me }) {
               {b.new_place_bonus > 0 && <Row label="New place" value={`+${b.new_place_bonus}`} highlight />}
             </div>
             {b.left_area && (
-              <p className="mt-3 flex items-center gap-2 rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p className="mt-3 flex items-center gap-2 rounded-2xl bg-danger-soft px-3 py-2 text-sm text-danger">
                 <MapPinOff className="size-4 shrink-0" /> You left the Hang area, so your time stopped when you left.
               </p>
             )}
-            {b.capped && <p className="mt-3 text-sm text-slate-500">You hit today's points limit. Come back tomorrow!</p>}
+            {b.capped && <p className="mt-3 text-sm text-muted">You hit today's points limit. Come back tomorrow!</p>}
           </Card>
         )}
 

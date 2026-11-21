@@ -23,7 +23,7 @@ export default function FriendOrFoe({ onFight, onTeamUp }) {
     <div className="space-y-3">
       {items.slice(0, 2).map((n) =>
         n.kind === 'friend_or_foe' ? (
-          <div key={n.id} className="rounded-3xl bg-slate-900 p-4 text-white shadow-lg">
+          <div key={n.id} className="rounded-3xl bg-[#020817] p-4 text-white shadow-lg ring-1 ring-line">
             <div className="flex items-start gap-3">
               <div className="rounded-2xl bg-white/10 p-2">
                 <Swords className="size-5 text-lime" />
@@ -38,7 +38,7 @@ export default function FriendOrFoe({ onFight, onTeamUp }) {
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <button
-                className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-red-500 font-semibold"
+                className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-danger-soft0 font-semibold"
                 onClick={() => {
                   dismiss(n.id)
                   onFight?.(n)
@@ -47,7 +47,7 @@ export default function FriendOrFoe({ onFight, onTeamUp }) {
                 <Swords className="size-4" /> Fight back
               </button>
               <button
-                className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-lime font-semibold text-forest"
+                className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-lime font-semibold text-on-accent"
                 onClick={() => {
                   dismiss(n.id)
                   onTeamUp?.(n)
@@ -58,7 +58,7 @@ export default function FriendOrFoe({ onFight, onTeamUp }) {
             </div>
           </div>
         ) : (
-          <div key={n.id} className="flex items-center gap-3 rounded-3xl bg-lime/60 p-4 text-forest">
+          <div key={n.id} className="flex items-center gap-3 rounded-3xl bg-lime/60 p-4 text-on-accent">
             <PartyPopper className="size-5 shrink-0" />
             <p className="flex-1 text-sm font-medium">{n.message}</p>
             <button aria-label="Dismiss" onClick={() => dismiss(n.id)}>

@@ -1,32 +1,106 @@
 @import "tailwindcss";
 
-/* Brand colours: change these to restyle the whole app */
-@theme {
-  --color-forest: #0d3b23;
-  --color-forest-light: #14532d;
-  --color-grass: #16a34a;
-  --color-lime: #bef264;
-  --color-canvas: #f4f5ef;
+/* Dark mode turns on when <html> has the "dark" class (see src/theme.js) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* App colours. Components use these names (bg-surface, text-ink, ...), and the values
+   below switch between light and dark. Change a value here to restyle the whole app. */
+@theme inline {
+  --color-brand: var(--brand);            /* headers, primary buttons */
+  --color-brand-light: var(--brand-light);
+  --color-brand-ink: var(--brand-ink);    /* brand-coloured text and icons on cards */
+  --color-on-accent: #0b1d3a;             /* text on lime */
+  --color-lime: #bef264;                  /* accent */
+  --color-grass: var(--grass);            /* points */
+  --color-canvas: var(--canvas);          /* page background */
+  --color-surface: var(--surface);        /* cards, inputs, tab bar */
+  --color-chip: var(--chip);
+  --color-line: var(--line);              /* borders */
+  --color-ink: var(--ink);                /* main text */
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+}
+
+:root {
+  --outer: #0b1d3a;
+  --brand: #0b1d3a;
+  --brand-light: #15305e;
+  --brand-ink: #0b1d3a;
+  --grass: #16a34a;
+  --canvas: #f2f5fa;
+  --surface: #ffffff;
+  --chip: #eaf0f7;
+  --line: #dfe6ef;
+  --ink: #0f172a;
+  --ink-soft: #334155;
+  --muted: #64748b;
+  --faint: #94a3b8;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --warn: #92400e;
+  --warn-soft: #fffbeb;
+  color-scheme: light;
+}
+
+.dark {
+  --outer: #02060f;
+  --brand: #13305f;
+  --brand-light: #1c3f7a;
+  --brand-ink: #bef264;
+  --grass: #4ade80;
+  --canvas: #060d1b;
+  --surface: #0e1a2f;
+  --chip: #17253e;
+  --line: #1f2e49;
+  --ink: #e7eef8;
+  --ink-soft: #c3cfe0;
+  --muted: #94a3b8;
+  --faint: #64748b;
+  --danger: #f87171;
+  --danger-soft: #3a1219;
+  --warn: #fcd34d;
+  --warn-soft: #36270a;
+  color-scheme: dark;
 }
 
 html {
-  background: var(--color-forest);
+  background: var(--outer);
   -webkit-tap-highlight-color: transparent;
 }
 
 body {
   margin: 0;
-  color: #0f172a;
+  color: var(--ink);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Leaflet popups match the app */
+/* Leaflet map pieces follow the theme */
+.leaflet-container {
+  font-family: inherit;
+}
 .leaflet-popup-content-wrapper {
   border-radius: 14px;
 }
-.leaflet-container {
-  font-family: inherit;
+.dark .leaflet-container {
+  background: #1b1b1b;
+}
+.dark .leaflet-popup-content-wrapper,
+.dark .leaflet-popup-tip {
+  background: var(--surface);
+  color: var(--ink);
+}
+.dark .leaflet-control-attribution {
+  background: rgb(14 26 47 / 0.8);
+  color: var(--muted);
+}
+.dark .leaflet-control-attribution a {
+  color: var(--ink-soft);
 }
 
 .pb-safe {
