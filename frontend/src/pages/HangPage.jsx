@@ -16,6 +16,7 @@ import Results from './Results'
 
 const PING_EVERY_MS = 30000      // location check while the app is open
 const HEARTBEAT_EVERY_MS = 15000 // "still in phones-down mode" signal
+const POINT_AWARD_EVERY_MS = 60000
 const PHONES_DOWN_MAX_BONUS = 0.5 // same as backend/app/points.py
 
 const PAUSE_MESSAGES = {
@@ -76,6 +77,20 @@ export default function HangPage() {
     const t = setInterval(send, PING_EVERY_MS)
     return () => clearInterval(t)
   }, [active, stillHere, id])
+
+  // Ask the server to award each newly completed minute, even before the host ends the Hang.
+  useEffect(() => {
+    if (!active || !stillHere) return undefined
+    const tick = () =>
+      api(`/hangs/${id}/tick`, { method: 'POST' })
+        .then((nextHang) => {
+          setHang(nextHang)
+          refreshUser()
+        })
+        .catch(() => {})
+    const t = setInterval(tick, POINT_AWARD_EVERY_MS)
+    return () => clearInterval(t)
+  }, [active, stillHere, id, setHang, refreshUser])
 
   // Phones-down heartbeat: if the phone locks, these stop and the bonus stops growing
   useEffect(() => {
@@ -242,7 +257,7 @@ export default function HangPage() {
               <p className="font-semibold">
                 {me.left_reason === 'checked_out' ? "You're checked out." : 'You went home, so your time stopped.'}
               </p>
-              <p className="mt-1 text-muted">You'll get your points when {hostName} ends the Hang.</p>
+              <p className="mt-1 text-muted">Points you earned before checkout are already added.</p>
               <Button variant="secondary" className="mt-3 w-full" onClick={() => navigate('/')}>
                 Home
               </Button>
@@ -322,7 +337,7 @@ export default function HangPage() {
         )}
         {isHost ? (
           <Button className="w-full" loading={busy === 'end'} onClick={endHang}>
-            <Sparkles className="size-5" aria-hidden /> End Hang and collect points
+            <Sparkles className="size-5" aria-hidden /> End Hang
           </Button>
         ) : (
           stillHere && (
@@ -333,8 +348,8 @@ export default function HangPage() {
         )}
         <p className="text-center text-[13px] text-faint">
           {isHost
-            ? 'Ending checks your location, then everyone gets their points.'
-            : 'Checking out checks your location. Points arrive when the host ends the Hang.'}
+            ? 'Points are awarded automatically each minute. Ending closes the Hang and shows final results.'
+            : 'Points are awarded automatically each minute. Checking out stops your time.'}
         </p>
       </div>
     </div>
