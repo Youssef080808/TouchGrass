@@ -1,4 +1,5 @@
 // Phone location. Browsers only allow this on HTTPS (or localhost).
+import { DEMO_MODE } from '../config'
 
 const FAKE_KEY = 'tg_fake_location'
 
@@ -15,6 +16,7 @@ export const TEST_LOCATIONS = [
 
 /** Testing helper: pretend to be somewhere (set from the Profile page). */
 export function getFakeLocation() {
+  if (!DEMO_MODE) return null // the real app always uses the phone's GPS
   try {
     const value = localStorage.getItem(FAKE_KEY)
     if (!value) return null

@@ -5,6 +5,11 @@ export const TAGLINE = 'Phones down. Crew up. Take your turf.'
 // Set VITE_API_URL only if the front end and API are hosted on different domains.
 export const API_URL = import.meta.env.VITE_API_URL || ''
 
+// Demo switch for the "pretend I'm somewhere else" testing tools. On while developing (npm run dev);
+// off in a real build unless it's built with VITE_DEMO_MODE=true (our judging demo).
+// Off means players can't fake their location from inside the app.
+export const DEMO_MODE = import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true'
+
 export const DEFAULT_CENTER = { lat: 45.5048, lng: -73.5772 } // McGill, Montreal
 
 export const TEAM_COLORS = ['#22c55e', '#3b82f6', '#f97316', '#a855f7', '#ef4444', '#eab308', '#06b6d4', '#ec4899']

@@ -6,10 +6,12 @@ API docs:     http://localhost:8000/docs
 Everything lives under /api. If the front end has been built (frontend/dist), FastAPI serves it
 too, so the whole app is one URL: easy to deploy and to open on a phone over HTTPS.
 """
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
@@ -23,9 +25,24 @@ async def lifespan(app: FastAPI):
     # Creates any missing tables and columns. Fine for a hackathon; use Alembic migrations for a real launch.
     Base.metadata.create_all(engine)
     added = add_missing_columns()
+    log = logging.getLogger("uvicorn.error")
     if added:
-        logging.getLogger("uvicorn.error").info("Added missing database columns: %s", ", ".join(added))
+        log.info("Added missing database columns: %s", ", ".join(added))
+
+    async def end_forgotten_hangs():
+        # Every minute: end Hangs nobody has opened the app for in hours, or that everyone left.
+        while True:
+            try:
+                ended = await run_in_threadpool(hangs.end_overdue_hangs)
+                if ended:
+                    log.info("Ended %d forgotten Hang(s)", ended)
+            except Exception:  # never let the background job crash the server
+                log.exception("Couldn't check for forgotten Hangs")
+            await asyncio.sleep(60)
+
+    task = asyncio.create_task(end_forgotten_hangs())
     yield
+    task.cancel()
 
 
 app = FastAPI(title="Turfed API", version="0.1.0", lifespan=lifespan)

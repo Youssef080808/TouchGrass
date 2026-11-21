@@ -7,7 +7,7 @@ Locking your phone is fine: your time together counts from check-in to check-out
 The phones-down bonus is optional: keep the app open on the black screen with the phone face-down
 and your points grow up to 1.5x (for the whole Hang), scaled by the share of time you did it.
 """
-from .config import POINTS_TIME_SCALE
+from .config import MIN_HANG_MINUTES, POINTS_TIME_SCALE
 
 TEAMMATE_BONUS = 0.5        # each friend (same team) in the Hang adds +0.5x
 OTHER_PLAYER_BONUS = 0.3    # each other player adds +0.3x
@@ -37,8 +37,9 @@ def streak_multiplier(streak_days: int) -> float:
 
 def score_member(*, seconds: float, phones_down_seconds: float, teammates: int, others: int,
                  streak_days: int, place_type: str | None, new_place: bool, bad_weather: bool,
-                 left_area: bool, cap_left: int) -> dict:
-    """Points for one person in one Hang, with a breakdown the app can show."""
+                 left_area: bool, cap_left: int, solo_at_home: bool = False) -> dict:
+    """Points for one person in one Hang, with a breakdown the app can show.
+    Nothing counts if you were there under MIN_HANG_MINUTES, or if it was really a solo session at home."""
     seconds = max(seconds, 0)
     minutes = int(seconds * POINTS_TIME_SCALE // 60)
     share = phones_down_seconds / seconds if seconds > 0 else 0
@@ -49,7 +50,12 @@ def score_member(*, seconds: float, phones_down_seconds: float, teammates: int, 
     weather = BAD_WEATHER_BONUS if bad_weather else 1.0
     bonus = NEW_PLACE_BONUS if new_place and minutes > 0 else 0
 
-    uncapped = round(minutes * party * phones_down * streak * active * weather) + bonus
+    too_short = minutes < MIN_HANG_MINUTES
+    if too_short or solo_at_home:
+        bonus = 0
+        uncapped = 0
+    else:
+        uncapped = round(minutes * party * phones_down * streak * active * weather) + bonus
     total = max(min(uncapped, cap_left), 0)
     return {
         "minutes": minutes,
@@ -61,6 +67,8 @@ def score_member(*, seconds: float, phones_down_seconds: float, teammates: int, 
         "weather_multiplier": weather,
         "new_place_bonus": bonus,
         "left_area": left_area,
+        "too_short": too_short,
+        "solo_at_home": solo_at_home,
         "capped": total < uncapped,
         "total": total,
     }
