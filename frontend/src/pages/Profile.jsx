@@ -2,8 +2,7 @@ import { Flame, LogOut, MapPin, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { Avatar, Button, Card, ErrorText, Page, TeamDot } from '../components/ui'
-import { DEFAULT_CENTER } from '../config'
-import { getFakeLocation, getPosition, setFakeLocation } from '../lib/location'
+import { getFakeLocation, getPosition, setFakeLocation, TEST_LOCATIONS } from '../lib/location'
 import { useUser } from '../user'
 
 export default function Profile() {
@@ -13,7 +12,13 @@ export default function Profile() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
   const [error, setError] = useState(null)
-  const [fake, setFake] = useState(Boolean(getFakeLocation()))
+  const initialFake = getFakeLocation()
+  const [fake, setFake] = useState(initialFake)
+  const [selectedLocation, setSelectedLocation] = useState(
+    TEST_LOCATIONS.find((p) => p.lat === initialFake?.lat && p.lng === initialFake?.lng)?.name ?? '',
+  )
+  const [customLat, setCustomLat] = useState(initialFake?.lat?.toString() ?? '')
+  const [customLng, setCustomLng] = useState(initialFake?.lng?.toString() ?? '')
 
   useEffect(() => {
     api('/interests').then(setAllInterests).catch(() => {})
@@ -44,9 +49,41 @@ export default function Profile() {
     }
   }
 
-  const toggleFake = () => {
-    setFakeLocation(fake ? null : DEFAULT_CENTER)
-    setFake(!fake)
+  const applyPreset = (name) => {
+    setSelectedLocation(name)
+    const place = TEST_LOCATIONS.find((p) => p.name === name)
+    if (!place) return
+    setError(null)
+    setCustomLat(place.lat.toString())
+    setCustomLng(place.lng.toString())
+    setFakeLocation(place)
+    setFake(place)
+    setMessage(`Test location set to ${place.name}.`)
+  }
+
+  const applyCustom = () => {
+    const lat = Number(customLat)
+    const lng = Number(customLng)
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180) {
+      setError('Enter a valid latitude (-90 to 90) and longitude (-180 to 180).')
+      return
+    }
+    const place = { lat, lng }
+    setSelectedLocation('')
+    setFakeLocation(place)
+    setFake(place)
+    setError(null)
+    setMessage('Custom test location set.')
+  }
+
+  const clearFake = () => {
+    setFakeLocation(null)
+    setFake(null)
+    setSelectedLocation('')
+    setCustomLat('')
+    setCustomLng('')
+    setError(null)
+    setMessage('Using your real device location.')
   }
 
   return (
@@ -110,10 +147,58 @@ export default function Profile() {
 
         <Card>
           <h2 className="font-semibold">Testing tools</h2>
-          <label className="mt-2 flex items-center justify-between gap-3 text-sm text-slate-600">
-            Pretend I'm at McGill (for testing on a laptop)
-            <input type="checkbox" checked={fake} onChange={toggleFake} className="size-5 accent-forest" />
+          <p className="mt-1 text-sm text-slate-500">
+            Pretend this device is somewhere else. The app uses this location for Hang starts, joins, pings, and checkouts.
+          </p>
+          <label className="mt-3 block text-sm font-semibold" htmlFor="test-location">
+            Pick a location
           </label>
+          <select
+            id="test-location"
+            value={selectedLocation}
+            onChange={(e) => applyPreset(e.target.value)}
+            className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"
+          >
+            <option value="">Choose a preset...</option>
+            {TEST_LOCATIONS.map((place) => (
+              <option key={place.name} value={place.name}>{place.name}</option>
+            ))}
+          </select>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <label className="text-xs font-semibold text-slate-500">
+              Latitude
+              <input
+                type="number"
+                step="any"
+                value={customLat}
+                onChange={(e) => setCustomLat(e.target.value)}
+                className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900"
+              />
+            </label>
+            <label className="text-xs font-semibold text-slate-500">
+              Longitude
+              <input
+                type="number"
+                step="any"
+                value={customLng}
+                onChange={(e) => setCustomLng(e.target.value)}
+                className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900"
+              />
+            </label>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Button variant="secondary" className="h-10" onClick={applyCustom}>
+              Use coordinates
+            </Button>
+            <Button variant="ghost" className="h-10" onClick={clearFake} disabled={!fake}>
+              Use real location
+            </Button>
+          </div>
+          {fake && (
+            <p className="mt-3 rounded-xl bg-lime/40 px-3 py-2 text-xs font-semibold text-forest">
+              Active test location: {fake.lat.toFixed(5)}, {fake.lng.toFixed(5)}
+            </p>
+          )}
         </Card>
 
         <Button variant="danger" className="w-full" onClick={() => window.confirm('Log out on this device?') && signOut()}>

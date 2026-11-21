@@ -2,6 +2,17 @@
 
 const FAKE_KEY = 'tg_fake_location'
 
+export const TEST_LOCATIONS = [
+  { name: 'McGill campus', lat: 45.5048, lng: -73.5772 },
+  { name: 'Mont-Royal Park', lat: 45.5036, lng: -73.5874 },
+  { name: 'Jeanne-Mance Park', lat: 45.5155, lng: -73.5862 },
+  { name: 'La Fontaine Park', lat: 45.5268, lng: -73.5697 },
+  { name: 'Old Port', lat: 45.5075, lng: -73.5536 },
+  { name: 'Lachine Canal', lat: 45.4840, lng: -73.5770 },
+  { name: 'Grande Bibliothèque', lat: 45.5154, lng: -73.5620 },
+  { name: 'McGill Fitness Centre', lat: 45.5079, lng: -73.5803 },
+]
+
 /** Testing helper: pretend to be somewhere (set from the Profile page). */
 export function getFakeLocation() {
   try {
@@ -27,9 +38,7 @@ export function setFakeLocation(loc) {
 export function getPosition({ timeout = 12000 } = {}) {
   const fake = getFakeLocation()
   if (fake) {
-    // a few metres of jitter so two test devices aren't on the exact same spot
-    const jitter = () => (Math.random() - 0.5) * 0.0002
-    return Promise.resolve({ lat: fake.lat + jitter(), lng: fake.lng + jitter() })
+    return Promise.resolve(fake)
   }
   return new Promise((resolve, reject) => {
     if (!('geolocation' in navigator)) {
