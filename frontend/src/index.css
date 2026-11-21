@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+/* Brand colours: change these to restyle the whole app */
+@theme {
+  --color-forest: #0d3b23;
+  --color-forest-light: #14532d;
+  --color-grass: #16a34a;
+  --color-lime: #bef264;
+  --color-canvas: #f4f5ef;
+}
+
+html {
+  background: var(--color-forest);
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  color: #0f172a;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Leaflet popups match the app */
+.leaflet-popup-content-wrapper {
+  border-radius: 14px;
+}
+.leaflet-container {
+  font-family: inherit;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
