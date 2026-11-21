@@ -1,7 +1,9 @@
 import { Crown, Flame, Hexagon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import { Avatar, Card, Page, Rise, Spinner } from '../components/ui'
+import { useNavigate } from 'react-router-dom'
+import { LogoMark } from '../components/Logo'
+import { Avatar, Button, Card, Page, Rise, Spinner } from '../components/ui'
 import { useUser } from '../user'
 
 const PODIUM = [
@@ -37,6 +39,7 @@ function Podium({ items, label, isMe }) {
 
 export default function Leaderboard() {
   const { user } = useUser()
+  const navigate = useNavigate()
   const [data, setData] = useState(null)
   const [tab, setTab] = useState('teams')
 
@@ -69,7 +72,18 @@ export default function Leaderboard() {
 
       {!data && <Spinner />}
 
-      {data && (
+      {data && rows.length === 0 && (
+        <Card className="text-center motion-safe:animate-rise">
+          <LogoMark size={56} className="mx-auto" />
+          <p className="mt-3 font-display text-[26px] font-extrabold uppercase leading-none">Nobody on the board yet</p>
+          <p className="mt-1.5 text-[15px] text-muted">The first Hang puts you at number one.</p>
+          <Button variant="lime" className="mt-4 w-full" onClick={() => navigate('/')}>
+            Start a Hang
+          </Button>
+        </Card>
+      )}
+
+      {data && rows.length > 0 && (
         <div key={tab}>
           <Podium items={rows} isMe={isMe} label={(r) => (isTeams ? `${r.hexes} zones` : `${r.points} pts`)} />
           <Card className="p-2">

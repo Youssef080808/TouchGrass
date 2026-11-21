@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { Button, ErrorText, Spinner } from '../components/ui'
+import { BUZZ, haptic } from '../lib/haptics'
 import { getPosition } from '../lib/location'
 
 /** Opened from a friend's QR code (/join/ABC123): checks your location and joins their Hang. */
@@ -15,6 +16,7 @@ export default function JoinPage() {
     try {
       const pos = await getPosition()
       const hang = await api('/hangs/join', { method: 'POST', body: { code, ...pos } })
+      haptic(BUZZ.join)
       navigate(`/hang/${hang.id}`, { replace: true })
     } catch (e) {
       setError(e.message)

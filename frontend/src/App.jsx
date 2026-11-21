@@ -60,20 +60,23 @@ export default function App() {
     )
   }
 
-  const showTabs = !location.pathname.startsWith('/hang/') && !location.pathname.startsWith('/join/')
+  const pushed = location.pathname.startsWith('/hang/') || location.pathname.startsWith('/join/')
 
   return (
     <Shell>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/map" element={<MapPage />} />
-        <Route path="/ranks" element={<Leaderboard />} />
-        <Route path="/me" element={<Profile />} />
-        <Route path="/hang/:id" element={<HangPage />} />
-        <Route path="/join/:code" element={<JoinPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-      {showTabs && <TabBar />}
+      {/* Keyed by path so each screen animates in like a native app: tabs fade up, a Hang slides in. */}
+      <div key={location.pathname} className={`overflow-x-clip ${pushed ? 'motion-safe:animate-push' : 'motion-safe:animate-page'}`}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/map" element={<MapPage />} />
+          <Route path="/ranks" element={<Leaderboard />} />
+          <Route path="/me" element={<Profile />} />
+          <Route path="/hang/:id" element={<HangPage />} />
+          <Route path="/join/:code" element={<JoinPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+      {!pushed && <TabBar />}
     </Shell>
   )
 }

@@ -7,7 +7,9 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import AnimatedNumber from '../components/AnimatedNumber'
 import FriendOrFoe from '../components/FriendOrFoe'
+import { LogoMark } from '../components/Logo'
 import { Avatar, Button, Card, ErrorText, Page, Rise, SectionTitle } from '../components/ui'
+import { BUZZ, haptic } from '../lib/haptics'
 import { getPosition } from '../lib/location'
 import { useTheme } from '../theme'
 import { useUser } from '../user'
@@ -39,6 +41,12 @@ function HeroStat({ icon, value, label }) {
     </div>
   )
 }
+
+const FIRST_STEPS = [
+  'Meet up somewhere and tap Start Hang.',
+  'Friends scan your QR code to join.',
+  'Phones down. Your points claim the zone.',
+]
 
 export default function Home() {
   const { user } = useUser()
@@ -79,6 +87,7 @@ export default function Home() {
         method: 'POST',
         body: { kind, ...pos, place_name: place?.name ?? null, place_type: place?.type ?? null },
       })
+      haptic(BUZZ.start)
       navigate(`/hang/${hang.id}`)
     } catch (e) {
       setError({ place: place?.name ?? null, message: e.message })
@@ -139,6 +148,30 @@ export default function Home() {
 
         <FriendOrFoe onFight={() => start('group')} onTeamUp={() => start('group')} />
 
+        {user.points === 0 && !active && (
+          <Rise i={1}>
+            <Card>
+              <div className="flex items-center gap-3">
+                <LogoMark size={48} />
+                <div>
+                  <p className="font-display text-[24px] font-extrabold uppercase leading-none">Your first Hang</p>
+                  <p className="mt-1 text-sm text-muted">Three steps to put your team on the map.</p>
+                </div>
+              </div>
+              <ol className="mt-4 space-y-2.5">
+                {FIRST_STEPS.map((step, i) => (
+                  <li key={step} className="flex items-center gap-3 text-[15px]">
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-lime font-display text-base font-bold text-on-accent">
+                      {i + 1}
+                    </span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            </Card>
+          </Rise>
+        )}
+
         {active && (
           <Rise i={1}>
             <button
@@ -195,6 +228,13 @@ export default function Home() {
                 <div key={i} className="h-36 animate-pulse rounded-3xl bg-surface ring-1 ring-line" />
               ))}
             </div>
+          )}
+          {suggest && suggest.places.length === 0 && (
+            <Card className="text-center">
+              <MapPin className="mx-auto size-8 text-faint" aria-hidden />
+              <p className="mt-2 font-semibold">No spots found nearby</p>
+              <p className="mt-1 text-sm text-muted">You can still start a Hang right where you are.</p>
+            </Card>
           )}
           <div className="space-y-3">
             {suggest?.places.map((p, i) => {

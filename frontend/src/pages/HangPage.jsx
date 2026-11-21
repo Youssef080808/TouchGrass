@@ -9,6 +9,7 @@ import PhoneDownOverlay from '../components/PhoneDownOverlay'
 import { Avatar, Button, Card, ErrorText, Rise, SectionTitle, Spinner, TeamDot } from '../components/ui'
 import { useHang } from '../hooks/useHang'
 import { askMotionPermission } from '../hooks/usePhoneDown'
+import { BUZZ, haptic } from '../lib/haptics'
 import { getPosition } from '../lib/location'
 import { useUser } from '../user'
 import Results from './Results'
@@ -89,10 +90,18 @@ export default function HangPage() {
     if (active) wasActive.current = true
     if (hang?.status === 'ended' && wasActive.current) {
       setPhonesDown(false)
-      navigator.vibrate?.(300)
+      haptic(BUZZ.end)
       refreshUser()
     }
   }, [active, hang?.status, refreshUser])
+
+  // Buzz when someone new joins (not for the people already here when the page opened)
+  const memberCount = hang?.members.length ?? 0
+  const seenMembers = useRef(0)
+  useEffect(() => {
+    if (seenMembers.current && memberCount > seenMembers.current && active) haptic(BUZZ.join)
+    seenMembers.current = memberCount
+  }, [memberCount, active])
 
   const startPhonesDown = async () => {
     setPauseNote(null)
@@ -100,6 +109,7 @@ export default function HangPage() {
     await askMotionPermission()
     try {
       setHang(await api(`/hangs/${id}/phones-down`, { method: 'POST', body: { active: true } }))
+      haptic(BUZZ.phonesDown)
       setPhonesDown(true)
     } catch (e) {
       setActionError(e.message)
