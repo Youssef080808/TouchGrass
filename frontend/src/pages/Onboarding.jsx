@@ -1,8 +1,8 @@
-import { ArrowLeft, Check, MapPin, Plus } from 'lucide-react'
+import { ArrowLeft, Check, Hexagon, MapPin, Plus, Smartphone, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import { Button, ErrorText, TeamDot } from '../components/ui'
+import { Button, ErrorText, Rise } from '../components/ui'
 import { APP_NAME, TAGLINE, TEAM_COLORS } from '../config'
 import { getPosition } from '../lib/location'
 import { useUser } from '../user'
@@ -14,6 +14,21 @@ const DEFAULT_INTERESTS = [
   'Basketball', 'Soccer', 'Running', 'Climbing', 'Gym', 'Tennis', 'Hiking', 'Board games',
   'Coffee', 'Reading', 'Art', 'Music', 'Movies', 'Food', 'Photography', 'Bowling',
 ]
+
+const FEATURES = [
+  { Icon: Users, text: 'Go somewhere real with your friends.' },
+  { Icon: Smartphone, text: 'Put your phones down together.' },
+  { Icon: Hexagon, text: 'Earn points and take over your neighbourhood.' },
+]
+
+function StepTitle({ children, sub }) {
+  return (
+    <>
+      <h2 className="font-display text-[38px] font-extrabold uppercase leading-[0.95] tracking-tight">{children}</h2>
+      {sub && <p className="mt-3 text-[16px] text-muted">{sub}</p>}
+    </>
+  )
+}
 
 export default function Onboarding() {
   const { signIn } = useUser()
@@ -91,69 +106,88 @@ export default function Onboarding() {
 
   if (STEPS[step] === 'welcome') {
     return (
-      <div className="flex min-h-dvh flex-col justify-between bg-brand px-6 pb-10 pt-20 text-white">
-        <div>
-          <div className="mb-8 flex items-end gap-1.5">
-            {[44, 64, 52, 72, 48].map((h, i) => (
-              <span key={i} className="w-3 rounded-t-full bg-lime" style={{ height: h, opacity: 0.5 + i * 0.1 }} />
+      <div className="bg-hex relative flex min-h-dvh flex-col justify-between overflow-hidden bg-brand px-6 pb-10 pt-16 text-white">
+        <div className="pointer-events-none absolute -right-10 top-16 opacity-90" aria-hidden>
+          <Hexagon className="size-40 text-lime motion-safe:animate-float" strokeWidth={1.2} style={{ fill: 'rgb(190 242 100 / 0.12)' }} />
+        </div>
+        <div className="pointer-events-none absolute bottom-40 right-8" aria-hidden>
+          <Hexagon className="size-16 text-sky-300 motion-safe:animate-float" strokeWidth={1.5} style={{ animationDelay: '1.2s', fill: 'rgb(125 211 252 / 0.12)' }} />
+        </div>
+
+        <div className="relative">
+          <Rise>
+            <p className="font-display text-base font-bold uppercase tracking-[0.3em] text-lime">Phones down</p>
+            <h1 className="mt-3 font-display text-[76px] font-extrabold uppercase leading-[0.85] tracking-tight">
+              Touch
+              <br />
+              <span className="text-lime">Grass</span>
+            </h1>
+            <p className="mt-5 max-w-[18rem] text-xl leading-snug text-white/80">{TAGLINE}</p>
+          </Rise>
+          <ul className="mt-10 space-y-3">
+            {FEATURES.map(({ Icon, text }, i) => (
+              <Rise key={text} i={i + 2} as="li" className="flex items-center gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-white/10">
+                  <Icon className="size-5 text-lime" aria-hidden />
+                </span>
+                <span className="text-[16px] text-white/85">{text}</span>
+              </Rise>
             ))}
-          </div>
-          <h1 className="text-5xl font-black tracking-tight">{APP_NAME}</h1>
-          <p className="mt-4 text-xl leading-snug text-white/80">{TAGLINE}</p>
-          <ul className="mt-10 space-y-3 text-[15px] text-white/80">
-            <li>Go somewhere real with your friends.</li>
-            <li>Put your phones down together.</li>
-            <li>Earn points and take over your neighbourhood.</li>
           </ul>
         </div>
-        <Button variant="lime" onClick={next}>
-          Get started
-        </Button>
+        <Rise i={6}>
+          <Button variant="lime" className="h-14 w-full text-lg" onClick={next}>
+            Get started
+          </Button>
+          <p className="mt-3 text-center text-sm text-white/45">Free · 18+ · {APP_NAME}</p>
+        </Rise>
       </div>
     )
   }
 
   return (
     <div className="flex min-h-dvh flex-col bg-canvas px-5 pb-8 pt-6">
-      <div className="mb-6 flex items-center gap-3">
-        <button aria-label="Back" onClick={() => setStep(step - 1)} className="rounded-full p-2 active:bg-line">
+      <div className="mb-8 flex items-center gap-3">
+        <button aria-label="Back" onClick={() => setStep(step - 1)} className="-ml-2 flex size-11 items-center justify-center rounded-full active:bg-chip">
           <ArrowLeft className="size-5" />
         </button>
-        <div className="flex flex-1 gap-1.5">
+        <div className="flex flex-1 gap-1.5" aria-label={`Step ${step} of ${STEPS.length - 1}`}>
           {STEPS.slice(1).map((s, i) => (
-            <span key={s} className={`h-1.5 flex-1 rounded-full ${i < step ? 'bg-brand' : 'bg-line'}`} />
+            <span key={s} className={`h-2 flex-1 rounded-full transition-colors duration-300 ${i < step ? 'bg-brand dark:bg-lime' : 'bg-line'}`} />
           ))}
         </div>
       </div>
 
-      <div className="flex-1">
+      <div className="flex-1" key={step}>
         {STEPS[step] === 'name' && (
-          <section>
-            <h2 className="text-3xl font-bold tracking-tight">What should we call you?</h2>
+          <Rise as="section">
+            <StepTitle>What should we call you?</StepTitle>
+            <label htmlFor="name" className="mt-6 block text-sm font-semibold text-ink-soft">First name</label>
             <input
+              id="name"
               autoFocus
               value={name}
               maxLength={40}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Your first name"
-              className="mt-6 h-14 w-full rounded-2xl bg-surface px-4 text-lg outline-none ring-1 ring-line focus:ring-2 focus:ring-brand-ink"
+              placeholder="Alex"
+              autoComplete="given-name"
+              className="mt-1.5 h-14 w-full rounded-2xl bg-surface px-4 text-lg text-ink outline-none ring-1 ring-line placeholder:text-faint focus:ring-2 focus:ring-brand-ink"
             />
-            <label className="mt-5 flex items-start gap-3 text-[15px] text-ink-soft">
+            <label className="mt-5 flex items-start gap-3 rounded-2xl bg-surface p-4 text-[15px] text-ink-soft ring-1 ring-line">
               <input
                 type="checkbox"
                 checked={isAdult}
                 onChange={(e) => setIsAdult(e.target.checked)}
-                className="mt-1 size-5 accent-brand-ink"
+                className="mt-0.5 size-5 shrink-0 accent-brand-ink"
               />
-              I'm 18 or older. {APP_NAME} helps adults meet up in real life.
+              <span>I'm 18 or older. {APP_NAME} helps adults meet up in real life.</span>
             </label>
-          </section>
+          </Rise>
         )}
 
         {STEPS[step] === 'interests' && (
-          <section>
-            <h2 className="text-3xl font-bold tracking-tight">What do you like doing?</h2>
-            <p className="mt-2 text-muted">We use this to suggest places and people.</p>
+          <Rise as="section">
+            <StepTitle sub="We use this to suggest places and people.">What do you like doing?</StepTitle>
             <div className="mt-6 flex flex-wrap gap-2">
               {allInterests.map((i) => {
                 const on = interests.includes(i)
@@ -161,46 +195,56 @@ export default function Onboarding() {
                   <button
                     key={i}
                     onClick={() => toggleInterest(i)}
-                    className={`rounded-full px-4 py-2.5 text-[15px] font-medium transition ${
-                      on ? 'bg-brand text-white' : 'bg-surface text-ink-soft ring-1 ring-line'
+                    aria-pressed={on}
+                    className={`flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[15px] font-semibold transition-colors ${
+                      on ? 'bg-brand text-white dark:bg-lime dark:text-on-accent' : 'bg-surface text-ink-soft ring-1 ring-line'
                     }`}
                   >
+                    {on && <Check className="size-4" aria-hidden />}
                     {i}
                   </button>
                 )
               })}
             </div>
-          </section>
+          </Rise>
         )}
 
         {STEPS[step] === 'team' && (
-          <section>
-            <h2 className="text-3xl font-bold tracking-tight">Pick your crew</h2>
-            <p className="mt-2 text-muted">Your team claims territory together. Join your friends' team or start one.</p>
+          <Rise as="section">
+            <StepTitle sub="Your team claims territory together. Join your friends' team or start one.">Pick your crew</StepTitle>
             <div className="mt-6 space-y-2">
-              {teams.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => {
-                    setTeamId(t.id)
-                    setNewTeam('')
-                  }}
-                  className={`flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-left ring-1 ${
-                    teamId === t.id ? 'ring-2 ring-brand-ink' : 'ring-line'
-                  }`}
-                >
-                  <TeamDot color={t.color} className="size-4" />
-                  <span className="flex-1 font-semibold">{t.name}</span>
-                  <span className="text-sm text-faint">{t.members} {t.members === 1 ? "member" : "members"}</span>
-                  {teamId === t.id && <Check className="size-5 text-brand-ink" />}
-                </button>
-              ))}
+              {teams.map((t) => {
+                const on = teamId === t.id
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      setTeamId(t.id)
+                      setNewTeam('')
+                    }}
+                    aria-pressed={on}
+                    className={`flex min-h-16 w-full items-center gap-3 rounded-2xl bg-surface p-3 text-left ring-1 transition ${
+                      on ? 'ring-2 ring-brand-ink' : 'ring-line'
+                    }`}
+                  >
+                    <span className="flex size-10 items-center justify-center rounded-xl" style={{ backgroundColor: `${t.color}26` }}>
+                      <Hexagon className="size-6" style={{ color: t.color, fill: t.color }} aria-hidden />
+                    </span>
+                    <span className="flex-1 font-display text-xl font-bold">{t.name}</span>
+                    <span className="text-sm text-muted">
+                      {t.members} {t.members === 1 ? 'member' : 'members'}
+                    </span>
+                    {on && <Check className="size-5 text-brand-ink" aria-hidden />}
+                  </button>
+                )
+              })}
             </div>
             <div className={`mt-4 rounded-2xl bg-surface p-4 ring-1 ${teamId === null && newTeam ? 'ring-2 ring-brand-ink' : 'ring-line'}`}>
-              <p className="flex items-center gap-2 font-semibold">
-                <Plus className="size-4" /> New team
-              </p>
+              <label htmlFor="new-team" className="flex items-center gap-2 font-display text-xl font-bold">
+                <Plus className="size-5" aria-hidden /> New team
+              </label>
               <input
+                id="new-team"
                 value={newTeam}
                 maxLength={40}
                 onChange={(e) => {
@@ -208,41 +252,41 @@ export default function Onboarding() {
                   setTeamId(null)
                 }}
                 placeholder="Team name"
-                className="mt-3 h-12 w-full rounded-xl bg-canvas px-3 outline-none focus:ring-2 focus:ring-brand-ink"
+                className="mt-3 h-12 w-full rounded-xl bg-canvas px-3 text-ink outline-none ring-1 ring-line placeholder:text-faint focus:ring-2 focus:ring-brand-ink"
               />
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3 flex flex-wrap gap-1.5" role="radiogroup" aria-label="Team colour">
                 {TEAM_COLORS.map((c) => (
                   <button
                     key={c}
+                    role="radio"
+                    aria-checked={newColor === c}
                     aria-label={`Colour ${c}`}
                     onClick={() => setNewColor(c)}
-                    className={`size-8 rounded-full ${newColor === c ? 'ring-2 ring-ink ring-offset-2 ring-offset-surface' : ''}`}
+                    className={`size-8 rounded-full transition ${newColor === c ? 'scale-110 ring-2 ring-ink ring-offset-2 ring-offset-surface' : ''}`}
                     style={{ backgroundColor: c }}
                   />
                 ))}
               </div>
             </div>
-          </section>
+          </Rise>
         )}
 
         {STEPS[step] === 'home' && (
-          <section>
-            <h2 className="text-3xl font-bold tracking-tight">Set your home spot</h2>
-            <p className="mt-2 text-muted">
-              Optional. Solo sessions only count when you're away from home, so staying on the couch doesn't earn
-              points. It's rounded and never shown to anyone.
-            </p>
-            <Button variant="secondary" className="mt-6 w-full" onClick={setHomeHere}>
-              <MapPin className="size-5" /> {home ? 'Home set' : "I'm home right now"}
-              {home && <Check className="size-5 text-brand-ink" />}
+          <Rise as="section">
+            <StepTitle sub="Optional. Solo sessions only count when you're away from home, so the couch doesn't earn points. It's rounded and never shown to anyone.">
+              Set your home spot
+            </StepTitle>
+            <Button variant="secondary" className="mt-6 h-14 w-full" onClick={setHomeHere}>
+              <MapPin className="size-5" aria-hidden /> {home ? 'Home set' : "I'm home right now"}
+              {home && <Check className="size-5 text-grass" aria-hidden />}
             </Button>
-          </section>
+          </Rise>
         )}
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-3 pt-6">
         <ErrorText>{error}</ErrorText>
-        <Button className="w-full" onClick={next} disabled={!canContinue} loading={busy}>
+        <Button className="h-14 w-full text-lg" onClick={next} disabled={!canContinue} loading={busy}>
           {step === STEPS.length - 1 ? (home ? "Let's go" : 'Skip for now') : 'Continue'}
         </Button>
       </div>

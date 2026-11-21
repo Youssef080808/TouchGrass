@@ -28,6 +28,14 @@ frontend/               React + Vite + Tailwind, phone-first
 Dockerfile              builds everything into one container for deploying
 ```
 
+## Design
+
+- Colours for light and dark mode live in `frontend/src/index.css` (navy + lime, hexagons as the motif).
+- Fonts: Barlow Condensed for headings and numbers, Barlow for text (bundled, no Google Fonts request).
+- From [21st.dev](https://21st.dev): the floating tab bar (`components/TabBar.jsx`, based on "Bottom Nav Bar" by
+  arunachalam) and rolling numbers (`components/AnimatedNumber.jsx`, based on "Animated Number" by ikascom).
+- Confetti on the results screen uses `canvas-confetti`. All animations turn off when the phone asks for reduced motion.
+
 ## Run it locally
 
 You need Python 3.11+ and Node 22+. Use two terminals.
