@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { CircleMarker, MapContainer, Polygon, Popup, TileLayer } from 'react-leaflet'
 import { api } from '../api'
 import { TeamDot } from '../components/ui'
-import { DEFAULT_CENTER } from '../config'
+import { DEFAULT_CENTER, MAP_TILES } from '../config'
 import { getPosition } from '../lib/location'
 import { useUser } from '../user'
 
@@ -40,10 +40,7 @@ export default function MapPage() {
         className="absolute inset-0 z-0"
         style={{ height: '100%', width: '100%' }}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <TileLayer url={MAP_TILES.url} attribution={MAP_TILES.attribution} maxZoom={MAP_TILES.maxZoom} />
         {hexes.map((h) => {
           const color = h.owner?.color ?? '#94a3b8'
           const mine = h.owner && h.owner.id === user.team?.id

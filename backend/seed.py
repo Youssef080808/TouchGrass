@@ -27,12 +27,12 @@ TEAMS = [
 PLAYERS = [
     ("Maya", 0, ["Running", "Coffee", "Photography"]),
     ("Omar", 0, ["Basketball", "Gym"]),
-    ("Léa", 0, ["Hiking", "Art"]),
+    ("Leah", 0, ["Hiking", "Art"]),
     ("Sam", 1, ["Board games", "Coffee", "Movies"]),
     ("Priya", 1, ["Reading", "Art"]),
     ("Jules", 1, ["Music", "Food"]),
     ("Noah", 2, ["Soccer", "Running"]),
-    ("Chloé", 2, ["Tennis", "Coffee"]),
+    ("Chloe", 2, ["Tennis", "Coffee"]),
     ("Ethan", 2, ["Climbing", "Gym"]),
     ("Aisha", 3, ["Photography", "Hiking"]),
     ("Lucas", 3, ["Bowling", "Food"]),
@@ -42,10 +42,10 @@ PLAYERS = [
 # (place, lat, lng, team index that mostly holds it, a rival team index or None)
 TERRITORY = [
     ("McGill campus", 45.5048, -73.5772, 0, 2),          # close fight: shows a contested hex
-    ("Parc du Mont-Royal", 45.5036, -73.5874, 0, None),
-    ("Parc Jeanne-Mance", 45.5155, -73.5862, 2, None),
-    ("Parc La Fontaine", 45.5268, -73.5697, 1, None),
-    ("Grande Bibliothèque", 45.5154, -73.5620, 1, 3),
+    ("Mount Royal Park", 45.5036, -73.5874, 0, None),
+    ("Jeanne-Mance Park", 45.5155, -73.5862, 2, None),
+    ("La Fontaine Park", 45.5268, -73.5697, 1, None),
+    ("Grande Bibliothèque (main library)", 45.5154, -73.5620, 1, 3),
     ("Old Port", 45.5075, -73.5536, 3, None),
     ("Mile End", 45.5236, -73.6010, 2, 1),
     ("Lachine Canal", 45.4840, -73.5770, 3, None),
