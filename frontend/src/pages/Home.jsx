@@ -8,6 +8,7 @@ import { api } from '../api'
 import AnimatedNumber from '../components/AnimatedNumber'
 import FriendOrFoe from '../components/FriendOrFoe'
 import { LogoMark } from '../components/Logo'
+import TeamRequests from '../components/TeamRequests'
 import { Avatar, Button, Card, ErrorText, Page, Rise, SectionTitle } from '../components/ui'
 import { BUZZ, haptic } from '../lib/haptics'
 import { getPosition } from '../lib/location'
@@ -106,7 +107,7 @@ export default function Home() {
         <Avatar name={user.name} color={user.team?.color} size={44} />
         <div className="min-w-0 flex-1">
           <h1 className="truncate font-display text-[28px] font-bold leading-none">Hey {user.name}</h1>
-          {user.team && <p className="mt-1 truncate text-sm font-medium text-muted">Playing for {user.team.name}</p>}
+          <p className="mt-1 truncate text-sm font-medium text-muted">{user.team ? `Playing for ${user.team.name}` : 'No team yet'}</p>
         </div>
         <button
           aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
@@ -147,6 +148,8 @@ export default function Home() {
         <ErrorText>{error && !error.place && error.message}</ErrorText>
 
         <FriendOrFoe onFight={() => start('group')} onTeamUp={() => start('group')} />
+
+        <TeamRequests />
 
         {user.points === 0 && !active && (
           <Rise i={1}>

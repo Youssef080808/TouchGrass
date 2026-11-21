@@ -19,7 +19,7 @@ backend/                FastAPI + SQLAlchemy (Postgres on Neon, or SQLite for qu
   app/points.py         the points formula (tune the numbers here)
   app/territory.py      hexagon ownership, fading, Friend or Foe alerts
   app/places.py         place suggestions (Google Places or sample Montreal places)
-  app/routers/          API endpoints: users, hangs (+ live WebSocket), map/leaderboard/suggestions
+  app/routers/          API endpoints: users, teams (join requests), hangs (+ live WebSocket), map/leaderboard/suggestions
   seed.py               fake teams, players and territory for demos
 frontend/               React + Vite + Tailwind, phone-first
   src/pages/            Onboarding, Home, HangPage, Results, MapPage, Leaderboard, Profile, JoinPage
@@ -112,6 +112,9 @@ Open that link on your phones. Everything (app + API + live updates) goes throug
   While the app is open it checks your location every 30 s; checking out from home stops your time at the last
   moment you were confirmed out; the host can't end the Hang from home; solo sessions only count 100 m+ from
   home or at a suggested place.
+- **Teams:** you can't just put yourself on a team. Asking to join sends a request to everyone on it, and you're
+  in once any one of them accepts (the first answer counts). Empty teams are open. You can leave, or ask to
+  switch to another team and move over when they accept. See `backend/app/routers/teams.py`.
 - **Territory:** the map uses Uber's H3 hexagons (about 350 m across). Each Hang adds each member's points to
   their team in that hexagon. Scores fade 10% a day, so zones must be defended. Most points owns it; within 20% is
   "contested". See `backend/app/territory.py`.

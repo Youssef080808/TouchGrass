@@ -1,7 +1,8 @@
-import { Check, Flame, FlaskConical, Hexagon, LogOut, MapPin, Monitor, Moon, Palette, Sparkles, Sun, Users } from 'lucide-react'
+import { Check, Flame, FlaskConical, Hexagon, LogOut, MapPin, Monitor, Moon, Palette, Sparkles, Sun } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import AnimatedNumber from '../components/AnimatedNumber'
+import TeamCard from '../components/TeamCard'
 import { Avatar, Button, Card, ErrorText, Rise, SectionTitle } from '../components/ui'
 import { getFakeLocation, getPosition, setFakeLocation, TEST_LOCATIONS } from '../lib/location'
 import { useTheme } from '../theme'
@@ -26,7 +27,6 @@ export default function Profile() {
   const { user, setUser, signOut } = useUser()
   const theme = useTheme()
   const [allInterests, setAllInterests] = useState([])
-  const [myTeam, setMyTeam] = useState(null)
   const [zones, setZones] = useState(0)
   const [interests, setInterests] = useState(user.interests)
   const [saving, setSaving] = useState(false)
@@ -42,7 +42,6 @@ export default function Profile() {
 
   useEffect(() => {
     api('/interests').then(setAllInterests).catch(() => {})
-    api('/me/team').then(setMyTeam).catch(() => {})
     api('/leaderboard')
       .then((d) => setZones(d.teams.find((t) => t.id === user.team?.id)?.hexes ?? 0))
       .catch(() => {})
@@ -137,41 +136,9 @@ export default function Profile() {
         )}
         <ErrorText>{error}</ErrorText>
 
-        {myTeam?.team && (
-          <Rise>
-            <Card>
-              <SectionTitle
-                action={
-                  <span className="flex items-center gap-1 text-sm font-semibold text-muted">
-                    <Users className="size-4" aria-hidden /> {myTeam.members.length}
-                  </span>
-                }
-              >
-                Your team
-              </SectionTitle>
-              <div className="-mx-2">
-                {myTeam.members.map((m) => (
-                  <div key={m.id} className={`flex min-h-12 items-center gap-3 rounded-2xl px-2 py-1.5 ${m.id === user.id ? 'bg-lime/30 dark:bg-lime/15' : ''}`}>
-                    <Avatar name={m.name} color={myTeam.team.color} size={36} />
-                    <span className="flex-1 truncate font-semibold">
-                      {m.name}
-                      {m.id === user.id && <span className="ml-1.5 text-sm font-normal text-muted">(you)</span>}
-                    </span>
-                    {m.streak > 0 && (
-                      <span className="flex items-center gap-0.5 text-sm font-semibold text-orange-500">
-                        <Flame className="size-4" aria-hidden /> {m.streak}
-                      </span>
-                    )}
-                    <span className="w-16 text-right font-display text-lg font-bold">{m.points}</span>
-                  </div>
-                ))}
-              </div>
-              {myTeam.members.length === 1 && (
-                <p className="mt-2 text-sm text-muted">Just you so far. Friends can pick {myTeam.team.name} when they sign up.</p>
-              )}
-            </Card>
-          </Rise>
-        )}
+        <Rise>
+          <TeamCard />
+        </Rise>
 
         <Rise i={1}>
           <Card>

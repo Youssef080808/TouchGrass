@@ -63,6 +63,8 @@ export default function Onboarding() {
       .catch(() => {})
   }, [])
 
+  const picked = teams.find((t) => t.id === teamId)
+
   const toggleInterest = (i) =>
     setInterests((list) => (list.includes(i) ? list.filter((x) => x !== i) : [...list, i]))
 
@@ -217,7 +219,7 @@ export default function Onboarding() {
 
         {STEPS[step] === 'team' && (
           <Rise as="section">
-            <StepTitle sub="Your team claims territory together. Join your friends' team or start one.">Pick your crew</StepTitle>
+            <StepTitle sub="Your team claims territory together. Ask to join your friends' team, or start your own.">Pick your crew</StepTitle>
             <div className="mt-6 space-y-2">
               {teams.map((t) => {
                 const on = teamId === t.id
@@ -245,6 +247,13 @@ export default function Onboarding() {
                 )
               })}
             </div>
+            {picked && (
+              <p className="mt-3 rounded-2xl bg-chip px-3 py-2 text-sm text-ink-soft">
+                {picked.members > 0
+                  ? `Someone on ${picked.name} has to accept you. You can play while you wait.`
+                  : `Nobody's on ${picked.name} yet, so you're in.`}
+              </p>
+            )}
             <div className={`mt-4 rounded-2xl bg-surface p-4 ring-1 ${teamId === null && newTeam ? 'ring-2 ring-brand-ink' : 'ring-line'}`}>
               <label htmlFor="new-team" className="flex items-center gap-2 font-display text-xl font-bold">
                 <Plus className="size-5" aria-hidden /> New team

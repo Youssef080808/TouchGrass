@@ -6,6 +6,7 @@ Hang         one session, solo or group, at one place
 HangMember   who was in a Hang, when they joined and left, their phones-down bonus time
 HexScore     points a team earned in one map hexagon (territory is the sum, fading over time)
 Notification Friend or Foe alerts and other messages
+TeamJoinRequest someone asking to join a team; any member can accept or decline
 """
 from datetime import date, datetime
 
@@ -118,3 +119,20 @@ class Notification(Base):
     other_team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"))
     read: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class TeamJoinRequest(Base):
+    """Someone asking to join a team. Any current member can accept or decline; the first answer counts."""
+    __tablename__ = "team_join_requests"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"), index=True)
+    status: Mapped[str] = mapped_column(String(10), default="pending", index=True)  # pending, accepted, declined, cancelled
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime)
+    decided_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
+    team: Mapped[Team] = relationship()
+    decided_by: Mapped[User | None] = relationship(foreign_keys=[decided_by_id])

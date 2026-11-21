@@ -35,9 +35,11 @@ def phones_down_active(m: HangMember) -> bool:
 
 def counted_party(hang: Hang, m: HangMember) -> tuple[int, int]:
     """(teammates, other players) who count toward this member's party bonus.
-    Everyone who joined counts, except people whose time stopped because they went home."""
+    Everyone who joined counts, except people whose time stopped because they went home.
+    People with no team count as other players, not as each other's teammates."""
     others = [o for o in hang.members if o.id != m.id and o.left_reason != "left_area"]
-    teammates = sum(1 for o in others if o.user.team_id == m.user.team_id)
+    team_id = m.user.team_id
+    teammates = sum(1 for o in others if team_id is not None and o.user.team_id == team_id)
     return teammates, len(others) - teammates
 
 

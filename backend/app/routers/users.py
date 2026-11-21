@@ -1,7 +1,7 @@
-"""Sign-up, profile, teams and notifications."""
+"""Sign-up, profile and notifications. Teams live in routers/teams.py."""
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..auth import current_user, new_token
@@ -10,6 +10,7 @@ from ..models import Notification, Team, User
 from ..places import INTERESTS
 from ..serializers import team_out, user_out
 from ..timeutil import iso
+from .teams import create_team, request_to_join
 
 router = APIRouter(tags=["users"])
 
@@ -39,39 +40,31 @@ def list_interests():
     return INTERESTS
 
 
-@router.get("/teams")
-def list_teams(db: Session = Depends(get_db)):
-    counts = dict(db.execute(select(User.team_id, func.count()).group_by(User.team_id)).all())
-    return [{**team_out(t), "members": counts.get(t.id, 0)} for t in db.scalars(select(Team).order_by(Team.name))]
-
-
 @router.post("/users")
 def sign_up(body: SignUp, db: Session = Depends(get_db)):
     if not body.is_adult:
         raise HTTPException(400, "Turfed is for people 18 and older")
+    team = None
     if body.team_id is not None:
         team = db.get(Team, body.team_id)
         if team is None:
             raise HTTPException(404, "That team doesn't exist")
-    elif body.new_team_name and body.new_team_name.strip():
-        name = body.new_team_name.strip()
-        if db.scalar(select(Team).where(func.lower(Team.name) == name.lower())):
-            raise HTTPException(409, "A team with that name already exists, pick it from the list")
-        team = Team(name=name, color=body.new_team_color or "#22c55e")
-        db.add(team)
-        db.flush()
-    else:
+    elif not (body.new_team_name and body.new_team_name.strip()):
         raise HTTPException(400, "Pick a team or create one")
 
     user = User(
         name=body.name.strip(),
         token=new_token(),
-        team_id=team.id,
         interests=[i for i in body.interests if i in INTERESTS],
     )
     if body.home_lat is not None and body.home_lng is not None:
         user.home_lat, user.home_lng = round(body.home_lat, 3), round(body.home_lng, 3)
     db.add(user)
+    db.flush()
+    if team is not None:
+        request_to_join(db, user, team)  # someone on the team has to accept (unless it's empty)
+    else:
+        create_team(db, user, body.new_team_name, body.new_team_color or "#22c55e")
     db.commit()
     db.refresh(user)
     return {"token": user.token, "user": user_out(user)}
@@ -92,20 +85,6 @@ def update_me(body: ProfileUpdate, user: User = Depends(current_user), db: Sessi
         user.home_lat, user.home_lng = round(body.home_lat, 3), round(body.home_lng, 3)
     db.commit()
     return user_out(user)
-
-
-@router.get("/me/team")
-def my_team(user: User = Depends(current_user), db: Session = Depends(get_db)):
-    """Your team and everyone on it, most points first."""
-    if user.team is None:
-        return {"team": None, "members": []}
-    members = db.scalars(
-        select(User).where(User.team_id == user.team_id).order_by(User.points.desc(), User.name)
-    )
-    return {
-        "team": team_out(user.team),
-        "members": [{"id": u.id, "name": u.name, "points": u.points, "streak": u.streak} for u in members],
-    }
 
 
 @router.get("/me/notifications")

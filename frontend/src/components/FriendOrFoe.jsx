@@ -1,4 +1,4 @@
-import { Handshake, PartyPopper, Swords, X } from 'lucide-react'
+import { Handshake, PartyPopper, Swords, UserX, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { Rise } from './ui'
@@ -6,6 +6,7 @@ import { Rise } from './ui'
 /**
  * Territory alerts. When another team takes one of your zones you get the choice:
  * Fight back (go out and win it back) or Team up (do a joint Hang and share it).
+ * Also shows other messages, like a team accepting or declining your join request.
  */
 export default function FriendOrFoe({ onFight, onTeamUp }) {
   const [items, setItems] = useState([])
@@ -58,6 +59,16 @@ export default function FriendOrFoe({ onFight, onTeamUp }) {
                   <Handshake className="size-4" aria-hidden /> Team up
                 </button>
               </div>
+            </div>
+          </Rise>
+        ) : n.kind === 'team_declined' ? (
+          <Rise key={n.id} i={i}>
+            <div className="flex items-center gap-3 rounded-3xl bg-surface p-4 ring-1 ring-line">
+              <UserX className="size-5 shrink-0 text-muted" aria-hidden />
+              <p className="flex-1 text-[15px] font-semibold">{n.message}</p>
+              <button aria-label="Dismiss" onClick={() => dismiss(n.id)} className="-m-2 rounded-full p-2 text-muted active:bg-chip">
+                <X className="size-5" />
+              </button>
             </div>
           </Rise>
         ) : (
