@@ -218,8 +218,13 @@ export default function GlassFold({
       ro.disconnect()
       gl.deleteBuffer(buffer)
       gl.deleteProgram(program)
-      // Free the context now: browsers allow only a few at once, and screens remount on every page change
-      gl.getExtension('WEBGL_lose_context')?.loseContext()
+      // Free the context once the canvas has really left the page (browsers allow only a few at once).
+      // Not straight away: in development React runs this cleanup and then sets up the same canvas again,
+      // and a lost context can't draw anymore.
+      const lose = gl.getExtension('WEBGL_lose_context')
+      setTimeout(() => {
+        if (!canvas.isConnected) lose?.loseContext()
+      }, 0)
     }
   }, [])
 
