@@ -74,6 +74,7 @@ export default function HangPage() {
       getPosition()
         .then((pos) => api(`/hangs/${id}/ping`, { method: 'POST', body: pos }))
         .catch(() => {})
+    send() // opening the app counts as a check-in (a Hang nobody opens for 3 hours ends by itself)
     const t = setInterval(send, PING_EVERY_MS)
     return () => clearInterval(t)
   }, [active, stillHere, id])
@@ -267,10 +268,15 @@ export default function HangPage() {
               <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-chip text-brand-ink">
                 <Lock className="size-5" aria-hidden />
               </div>
-              <p className="text-[15px] text-ink-soft">
-                <span className="font-semibold text-ink">Lock your phone and put it away.</span> Your time keeps counting
-                until you check out{isHost ? ' or end the Hang' : ` or ${hostName} ends the Hang`}.
-              </p>
+              <div>
+                <p className="text-[15px] text-ink-soft">
+                  <span className="font-semibold text-ink">Lock your phone and put it away.</span> Your time keeps counting
+                  until you check out{isHost ? ' or end the Hang' : ` or ${hostName} ends the Hang`}.
+                </p>
+                <p className="mt-2 text-[13px] text-muted">
+                  Points start after 10 minutes. Open the app at least every 3 hours, or the Hang ends by itself.
+                </p>
+              </div>
             </Card>
           )}
         </Rise>
@@ -318,7 +324,9 @@ export default function HangPage() {
               ))}
             </ul>
             {hang.kind === 'group' && hang.members.length === 1 && (
-              <p className="mt-3 text-sm text-muted">Waiting for friends to join...</p>
+              <p className="mt-3 text-sm text-muted">
+                Waiting for friends to join... If nobody stays 10 minutes, this counts as a solo session (only away from home).
+              </p>
             )}
           </Card>
         </Rise>

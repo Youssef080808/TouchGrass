@@ -27,6 +27,10 @@ JOIN_RADIUS_M = _float("JOIN_RADIUS_M", 100)                      # must be this
 HOME_RADIUS_M = _float("HOME_RADIUS_M", 100)
 POINTS_TIME_SCALE = _float("POINTS_TIME_SCALE", 1)                # demo speed-up (60 = 1 s counts as 1 min)
 DAILY_POINTS_CAP = _int("DAILY_POINTS_CAP", 300)
+MIN_HANG_MINUTES = _float("MIN_HANG_MINUTES", 10)                 # shorter Hangs earn nothing (stops zone hopping)
+# A Hang ends by itself after this long with nobody opening the app (stops forgotten Hangs).
+NO_CHECKIN_END_HOURS = _float("NO_CHECKIN_END_HOURS", 3)
+PLACE_RADIUS_M = _float("PLACE_RADIUS_M", 400)                    # "I'm here" at a place: must be this close to it
 HEX_RESOLUTION = _int("HEX_RESOLUTION", 9)                        # H3 res 9 = hexes about 350 m across
 TERRITORY_DECAY_PER_DAY = _float("TERRITORY_DECAY_PER_DAY", 0.9)  # territory points keep 90% per day
 

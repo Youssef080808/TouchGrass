@@ -73,6 +73,7 @@ def hang_out(db: Session, hang: Hang) -> dict:
         "bad_weather": hang.bad_weather,
         "started_at": iso(hang.started_at),
         "ended_at": iso(hang.ended_at),
+        "end_reason": hang.end_reason,
         "members": members,
         "hex_owner": None,
         "hex_owner_before": None,

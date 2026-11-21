@@ -82,7 +82,16 @@ export default function Results({ hang, me }) {
         <p className="mt-1 text-[15px] text-white/70">points{hang.place_name ? ` at ${hang.place_name}` : ''}</p>
         {points === 0 && !b?.capped && (
           <p className="mx-auto mt-4 max-w-[300px] rounded-2xl bg-white/10 px-4 py-3 text-[15px] text-white/85">
-            Points count by the minute. Stay out a little longer next time and bring a friend for a bonus.
+            {b?.solo_at_home
+              ? "Nobody joined, so this counted as a solo session. Solo time only counts away from home: set your home spot in Profile, or start at a suggested place."
+              : b?.too_short
+                ? 'Hangs need at least 10 minutes to earn points. Stay a little longer next time!'
+                : 'Stay out a little longer next time and bring a friend for a bonus.'}
+          </p>
+        )}
+        {hang.end_reason === 'no_checkins' && (
+          <p className="mx-auto mt-3 max-w-[300px] text-[13px] text-white/60">
+            This Hang ended by itself: nobody opened the app for 3 hours, so time counts up to the last check-in.
           </p>
         )}
       </header>

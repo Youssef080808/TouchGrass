@@ -66,6 +66,8 @@ class Hang(Base):
     ended_at: Mapped[datetime | None] = mapped_column(DateTime)
     # Who held the zone just before this Hang ended, so the app can show a capture
     hex_owner_before_id: Mapped[int | None] = mapped_column(Integer)
+    # host / no_checkins (nobody opened the app for hours) / everyone_left
+    end_reason: Mapped[str | None] = mapped_column(String(20))
 
     host: Mapped[User] = relationship()
     members: Mapped[list["HangMember"]] = relationship(

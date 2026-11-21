@@ -10,6 +10,11 @@ How time is verified (people can lock their phones and put them away):
 - End: the host can end it anywhere except from home.
 - Phones-down bonus (optional): the app sends a heartbeat every 15 s while it's open on the black
   screen. If the phone is locked or the app closed, heartbeats stop and the bonus stops growing.
+- Minimum: under MIN_HANG_MINUTES earns nothing (stops quick "zone hopping").
+- Alone = solo: if nobody else stayed 10+ minutes, the host is scored like a solo session, which only
+  counts away from home or at a real place (checked: you must be near it when you start).
+- Forgotten Hangs: if nobody opens the app for NO_CHECKIN_END_HOURS, the Hang ends by itself and time
+  counts only up to the last check-in. It also ends once everyone has left.
 
 Live updates: the app opens a WebSocket at /api/ws/hangs/{id}. The server checks the Hang every
 2 seconds and pushes the new state when something changed.
@@ -28,7 +33,8 @@ from sqlalchemy.orm import Session
 
 from .. import territory
 from ..auth import current_user
-from ..config import DAILY_POINTS_CAP, HOME_RADIUS_M, JOIN_RADIUS_M
+from ..config import (DAILY_POINTS_CAP, HOME_RADIUS_M, JOIN_RADIUS_M, MIN_HANG_MINUTES, NO_CHECKIN_END_HOURS,
+                      PLACE_RADIUS_M, POINTS_TIME_SCALE)
 from ..db import SessionLocal, get_db
 from ..geo import distance_m, hex_for
 from ..models import Hang, HangMember, HexScore, User
@@ -52,6 +58,9 @@ class StartHang(Location):
     kind: Literal["solo", "group"]
     place_name: str | None = Field(default=None, max_length=120)
     place_type: str | None = Field(default=None, max_length=40)
+    # Where the suggested place is, so the server can check you're really there
+    place_lat: float | None = Field(default=None, ge=-90, le=90)
+    place_lng: float | None = Field(default=None, ge=-180, le=180)
 
 
 class JoinHang(Location):
@@ -63,16 +72,20 @@ class PhonesDown(BaseModel):
 
 
 def _active_membership(db: Session, user: User) -> HangMember | None:
-    return db.scalar(
+    m = db.scalar(
         select(HangMember).join(Hang)
         .where(HangMember.user_id == user.id, Hang.status == "active", HangMember.left_at.is_(None))
     )
+    if m and _auto_end_if_due(db, m.hang):
+        return None
+    return m
 
 
 def _get_hang(db: Session, hang_id: int) -> Hang:
     hang = db.get(Hang, hang_id)
     if hang is None:
         raise HTTPException(404, "Hang not found")
+    _auto_end_if_due(db, hang)
     return hang
 
 
@@ -118,6 +131,58 @@ def _close_phones_down(m: HangMember, at: datetime) -> None:
     m.phones_down_seen_at = None
 
 
+def _scaled_minutes(start: datetime, stop: datetime) -> float:
+    return (stop - start).total_seconds() * POINTS_TIME_SCALE / 60
+
+
+def _someone_else_stayed(hang: Hang, end_at: datetime) -> bool:
+    """A real group: at least one person besides the host was there MIN_HANG_MINUTES or more."""
+    return any(
+        _scaled_minutes(m.joined_at, m.left_at or end_at) >= MIN_HANG_MINUTES
+        for m in hang.members if m.user_id != hang.host_id
+    )
+
+
+def _solo_counts(hang: Hang, host: User) -> bool:
+    """Solo time counts at a real place (checked at start) or away from a home you've set."""
+    if hang.place_name:
+        return True
+    return host.home_lat is not None and not _near_home(host, Location(lat=hang.lat, lng=hang.lng))
+
+
+def _last_checkin(hang: Hang) -> datetime:
+    """The last time anyone in the Hang had the app open (location ping, phones-down heartbeat or joining)."""
+    times = [hang.started_at]
+    for m in hang.members:
+        times += [t for t in (m.joined_at, m.last_verified_at, m.phones_down_seen_at) if t]
+    return max(times)
+
+
+def _auto_end_if_due(db: Session, hang: Hang) -> bool:
+    """End a Hang nobody has checked in to for NO_CHECKIN_END_HOURS, or that everyone has left.
+    Returns True if it ended it."""
+    if hang.status != "active":
+        return False
+    if all(m.left_at for m in hang.members):
+        _finish_hang(db, hang, max(m.left_at for m in hang.members), "everyone_left")
+    else:
+        last = _last_checkin(hang)
+        if utcnow() - last < timedelta(hours=NO_CHECKIN_END_HOURS):
+            return False
+        _finish_hang(db, hang, last, "no_checkins")  # time counts only up to the last check-in
+    db.commit()
+    return True
+
+
+def end_overdue_hangs() -> int:
+    """Run every minute from main.py so forgotten Hangs end even if nobody opens the app."""
+    ended = 0
+    with SessionLocal() as db:
+        for hang in db.scalars(select(Hang).where(Hang.status == "active")).all():
+            ended += _auto_end_if_due(db, hang)
+    return ended
+
+
 def _stop_time(m: HangMember, loc_ok: bool, now: datetime) -> tuple[datetime, str]:
     """When this person's time stops: now if they're still out, else (they're home) their last confirmed moment."""
     if loc_ok:
@@ -137,11 +202,24 @@ def start_hang(body: StartHang, user: User = Depends(current_user), db: Session 
     existing = _active_membership(db, user)
     if existing:
         raise HTTPException(409, f"You're already in a Hang (code {existing.hang.code})")
-    # Anti-cheat for solo: it only counts away from home (or at a suggested place).
-    if body.kind == "solo" and not body.place_name and _near_home(user, body):
-        raise HTTPException(
-            400, f"Solo sessions count when you're at least {HOME_RADIUS_M:.0f} m "
-                 "from home, or at a suggested place. Go touch some grass!")
+    # "I'm here" at a suggested place: check you really are (stops claiming a park from your couch).
+    if body.place_name:
+        if body.place_lat is None or body.place_lng is None:
+            raise HTTPException(400, "Missing the place's location. Refresh the app and try again.")
+        d = distance_m(body.place_lat, body.place_lng, body.lat, body.lng)
+        if d > PLACE_RADIUS_M:
+            far = f"{d / 1000:.1f} km" if d >= 1000 else f"{d:.0f} m"
+            raise HTTPException(400, f"You're {far} from {body.place_name}. Start the Hang when you get there.")
+    # Anti-cheat for solo: it only counts away from a home you've set (or at a suggested place).
+    if body.kind == "solo" and not body.place_name:
+        if user.home_lat is None:
+            raise HTTPException(
+                400, "Set your home spot in Profile first, so the app can tell you're out. "
+                     "Or start at one of the places below.")
+        if _near_home(user, body):
+            raise HTTPException(
+                400, f"Solo sessions count when you're at least {HOME_RADIUS_M:.0f} m "
+                     "from home, or at a suggested place. Go touch some grass!")
     weather = current_weather(body.lat, body.lng)
     now = utcnow()
     hang = Hang(
@@ -236,28 +314,21 @@ def checkout(hang_id: int, body: Location, user: User = Depends(current_user), d
     return hang_out(db, hang)
 
 
-@router.post("/hangs/{hang_id}/end")
-def end_hang(hang_id: int, body: Location, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    """Host ends the Hang: score everyone, update streaks, add territory, send Friend or Foe alerts."""
-    hang = _get_hang(db, hang_id)
-    if hang.host_id != user.id:
-        raise HTTPException(403, "Only the host can end the Hang")
-    if hang.status != "active":
-        raise HTTPException(409, "This Hang already ended")
-    # The group may have moved on together, so ending works anywhere you're still out, just not from home.
-    if not _still_out(hang, user, body):
-        raise HTTPException(400, "You're at home, so you can't end the Hang from here. End it while you're still out.")
-
+def _finish_hang(db: Session, hang: Hang, end_at: datetime, reason: str) -> None:
+    """Score everyone, update streaks, add territory, send Friend or Foe alerts. The caller commits."""
+    hang.status, hang.ended_at, hang.end_reason = "ended", end_at, reason
     now = utcnow()
-    hang.status, hang.ended_at = "ended", now
     owner_before = territory.owner_of(db, hang.hex_id)
     hang.hex_owner_before_id = owner_before
     today = local_today()
     day_start = local_day_start_utc(today)
+    # Nobody else stayed? Then it was really a solo session, with the solo rules.
+    host = db.get(User, hang.host_id)
+    solo_at_home = not _someone_else_stayed(hang, end_at) and not _solo_counts(hang, host)
 
     for m in hang.members:
         u = m.user
-        stop = m.left_at or now   # everyone still checked in stops when the host ends the Hang
+        stop = min(m.left_at or end_at, end_at)   # everyone still checked in stops when the Hang ends
         _close_phones_down(m, stop)
         # Streak: +1 if you also played yesterday, back to 1 if you skipped a day.
         if u.last_active_date != today:
@@ -280,6 +351,7 @@ def end_hang(hang_id: int, body: Location, user: User = Depends(current_user), d
             teammates=teammates, others=others, streak_days=u.streak, place_type=hang.place_type,
             new_place=not been_here, bad_weather=hang.bad_weather,
             left_area=m.left_reason == "left_area", cap_left=DAILY_POINTS_CAP - int(earned_today),
+            solo_at_home=solo_at_home if m.user_id == hang.host_id else False,
         )
         m.points_earned, m.breakdown = result["total"], result
         u.points += result["total"]
@@ -291,6 +363,21 @@ def end_hang(hang_id: int, body: Location, user: User = Depends(current_user), d
     owner_after = territory.owner_of(db, hang.hex_id)
     territory.notify_friend_or_foe(db, hang.hex_id, hang.place_name or "a zone near you",
                                    owner_before, owner_after)
+
+
+@router.post("/hangs/{hang_id}/end")
+def end_hang(hang_id: int, body: Location, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Host ends the Hang: score everyone, update streaks, add territory, send Friend or Foe alerts."""
+    hang = _get_hang(db, hang_id)
+    if hang.host_id != user.id:
+        raise HTTPException(403, "Only the host can end the Hang")
+    if hang.status != "active":
+        raise HTTPException(409, "This Hang already ended")
+    # The group may have moved on together, so ending works anywhere you're still out, just not from home.
+    if not _still_out(hang, user, body):
+        raise HTTPException(400, "You're at home, so you can't end the Hang from here. End it while you're still out.")
+
+    _finish_hang(db, hang, utcnow(), "host")
     db.commit()
     return hang_out(db, hang)
 

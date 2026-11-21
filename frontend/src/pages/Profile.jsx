@@ -4,6 +4,7 @@ import { api } from '../api'
 import AnimatedNumber from '../components/AnimatedNumber'
 import TeamCard from '../components/TeamCard'
 import { Avatar, Button, Card, ErrorText, Rise, SectionTitle } from '../components/ui'
+import { DEMO_MODE } from '../config'
 import { getFakeLocation, getPosition, setFakeLocation, TEST_LOCATIONS } from '../lib/location'
 import { useTheme } from '../theme'
 import { useUser } from '../user'
@@ -210,6 +211,7 @@ export default function Profile() {
           </Card>
         </Rise>
 
+        {DEMO_MODE && (
         <Rise i={4}>
           <Card>
             <SectionTitle action={<FlaskConical className="size-5 text-muted" aria-hidden />}>Testing tools</SectionTitle>
@@ -250,6 +252,7 @@ export default function Profile() {
             )}
           </Card>
         </Rise>
+        )}
 
         <Button variant="danger" className="w-full" onClick={() => window.confirm('Log out on this device?') && signOut()}>
           <LogOut className="size-5" aria-hidden /> Log out

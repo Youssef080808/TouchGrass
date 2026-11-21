@@ -112,6 +112,14 @@ Open that link on your phones. Everything (app + API + live updates) goes throug
   While the app is open it checks your location every 30 s; checking out from home stops your time at the last
   moment you were confirmed out; the host can't end the Hang from home; solo sessions only count 100 m+ from
   home or at a suggested place.
+  - Hangs under 10 minutes earn nothing (stops "zone hopping" with 1-minute Hangs).
+  - If nobody else stays 10+ minutes, the Hang counts as solo, so a "group" of one on the couch earns nothing.
+  - "I'm here" at a suggested place only works within 400 m of it.
+  - If nobody opens the app for 3 hours, the Hang ends by itself and time counts only up to the last check-in.
+    It also ends once everyone has left.
+  - The "pretend I'm somewhere else" testing tools only exist in demo builds (`VITE_DEMO_MODE=true`, always on
+    with `npm run dev`). A determined person can still fake GPS with outside tools; a native app could use the
+    phone's mock-location detection.
 - **Teams:** you can't just put yourself on a team. Asking to join sends a request to everyone on it, and you're
   in once any one of them accepts (the first answer counts). Empty teams are open. You can leave, or ask to
   switch to another team and move over when they accept. See `backend/app/routers/teams.py`.

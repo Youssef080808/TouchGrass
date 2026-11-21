@@ -86,7 +86,11 @@ export default function Home() {
       const pos = await getPosition()
       const hang = await api('/hangs', {
         method: 'POST',
-        body: { kind, ...pos, place_name: place?.name ?? null, place_type: place?.type ?? null },
+        body: {
+          kind, ...pos,
+          place_name: place?.name ?? null, place_type: place?.type ?? null,
+          place_lat: place?.lat ?? null, place_lng: place?.lng ?? null, // the server checks you're really there
+        },
       })
       haptic(BUZZ.start)
       navigate(`/hang/${hang.id}`)

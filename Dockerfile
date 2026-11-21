@@ -7,6 +7,9 @@ WORKDIR /web
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
+# Build with --build-arg VITE_DEMO_MODE=true for the judging demo (shows the fake-location testing tools)
+ARG VITE_DEMO_MODE=false
+ENV VITE_DEMO_MODE=$VITE_DEMO_MODE
 RUN npm run build
 
 # 2) Run the backend
