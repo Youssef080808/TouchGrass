@@ -64,6 +64,20 @@ export async function disablePush() {
   await sub.unsubscribe()
 }
 
+/** Test button: re-register this browser, send a test, and if the push service says this browser's
+ *  subscription expired, make a fresh one and try once more. Returns what the server reported. */
+export async function testPush() {
+  await syncPush()
+  let result = await api('/push/test', { method: 'POST' })
+  if (!result.delivered && (result.expired || !result.devices)) {
+    const sub = await currentSubscription()
+    if (sub) await sub.unsubscribe()
+    await enablePush()
+    result = await api('/push/test', { method: 'POST' })
+  }
+  return result
+}
+
 /** On app start: if this browser already has notifications on, make sure the server knows
  *  (for example after the database was reset for a demo). Silent; never asks for anything. */
 export async function syncPush() {

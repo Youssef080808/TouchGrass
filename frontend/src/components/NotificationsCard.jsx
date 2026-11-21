@@ -1,7 +1,7 @@
 import { Bell, BellOff, Check, Send } from 'lucide-react'
-import { useState } from 'react'
-import { api } from '../api'
+import { useEffect, useState } from 'react'
 import { usePush } from '../hooks/usePush'
+import { syncPush, testPush } from '../lib/push'
 import { Button, Card, ErrorText, SectionTitle } from './ui'
 
 /** Me tab: turn notifications on or off for this browser, and send yourself a test. */
@@ -10,6 +10,11 @@ export default function NotificationsCard() {
   const [note, setNote] = useState(null)
   const [testing, setTesting] = useState(false)
 
+  // Notifications are on in this browser: make sure the server still knows (e.g. after a database reset)
+  useEffect(() => {
+    if (push.status === 'on') syncPush()
+  }, [push.status])
+
   if (push.status === null) return null
 
   const sendTest = async () => {
@@ -17,8 +22,15 @@ export default function NotificationsCard() {
     setNote(null)
     push.setError(null)
     try {
-      await api('/push/test', { method: 'POST' })
-      setNote('Sent. It should pop up in a few seconds.')
+      const r = await testPush()
+      if (r.delivered > 0) {
+        setNote(
+          `Sent to ${r.delivered === 1 ? 'this device' : `${r.delivered} devices`}. Nothing popped up? On a Mac, allow your ` +
+            'browser in System Settings > Notifications and turn off Focus.',
+        )
+      } else {
+        push.setError(r.errors?.[0] ? `Couldn't deliver it: ${r.errors[0]}` : "The server couldn't reach this browser. Tap Turn off, then Turn on, and try again.")
+      }
     } catch (e) {
       push.setError(e.message)
     } finally {

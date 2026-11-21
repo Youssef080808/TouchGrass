@@ -11,6 +11,7 @@ import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Iterable
+from urllib.parse import urlparse
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -53,14 +54,28 @@ def send(user_ids: Iterable[int | None], title: str, body: str, url: str = "/") 
     """Notify everyone in user_ids on every device they turned notifications on for. Returns right away."""
     ids = sorted({i for i in user_ids if i})
     if ids:
-        _pool.submit(_deliver, ids, json.dumps({"title": title, "body": body, "url": url}))
+        _pool.submit(_deliver, ids, _payload(title, body, url))
 
 
-def _deliver(user_ids: list[int], payload: str) -> int:
-    sent = 0
+def send_now(user_id: int, title: str, body: str, url: str = "/") -> list[dict]:
+    """Send to one person right away and report what each push service said (for the test button)."""
+    return _deliver([user_id], _payload(title, body, url))
+
+
+def _payload(title: str, body: str, url: str) -> str:
+    return json.dumps({"title": title, "body": body, "url": url})
+
+
+def _deliver(user_ids: list[int], payload: str) -> list[dict]:
+    """Send to every device of these users. One result per device; every result is logged."""
+    results = []
     with SessionLocal() as db:
         subs = db.scalars(select(PushSubscription).where(PushSubscription.user_id.in_(user_ids))).all()
+        if not subs:
+            log.info("Push: no devices with notifications on for user(s) %s", user_ids)
         for s in subs:
+            service = urlparse(s.endpoint).netloc
+            result = {"service": service, "ok": False, "expired": False, "error": None}
             try:
                 webpush(
                     {"endpoint": s.endpoint, "keys": {"p256dh": s.p256dh, "auth": s.auth}},
@@ -71,14 +86,21 @@ def _deliver(user_ids: list[int], payload: str) -> int:
                     headers={"Urgency": "high"},
                     timeout=10,
                 )
-                sent += 1
+                result["ok"] = True
+                log.info("Push to user %s via %s: delivered", s.user_id, service)
             except WebPushException as e:
                 status = e.response.status_code if e.response is not None else None
+                reason = (e.response.text or "").strip()[:200] if e.response is not None else str(e)
+                result["error"] = f"{service} said {status}: {reason}" if status else str(e)
                 if status in (404, 410):  # the browser turned notifications off, or the subscription expired
+                    result["expired"] = True
                     db.delete(s)
+                    log.warning("Push to user %s via %s: subscription expired (%s), removed it", s.user_id, service, status)
                 else:
-                    log.warning("Push to user %s failed: %s", s.user_id, e)
-            except Exception:
-                log.exception("Push to user %s failed", s.user_id)
+                    log.warning("Push to user %s via %s failed: %s", s.user_id, service, result["error"])
+            except Exception as e:
+                result["error"] = f"Couldn't reach {service}: {e}"
+                log.exception("Push to user %s via %s failed", s.user_id, service)
+            results.append(result)
         db.commit()
-    return sent
+    return results

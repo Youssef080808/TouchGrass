@@ -1,7 +1,7 @@
 """Turning notifications on and off for this browser, plus a test button."""
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import notify
@@ -56,9 +56,13 @@ def unsubscribe(body: Unsubscribe, user: User = Depends(current_user), db: Sessi
 
 
 @router.post("/test")
-def test(user: User = Depends(current_user), db: Session = Depends(get_db)):
-    """Sends a notification to all of your devices, so you can check it works."""
-    devices = db.scalar(select(func.count()).select_from(PushSubscription)
-                        .where(PushSubscription.user_id == user.id)) or 0
-    notify.send([user.id], "Notifications are on", "This is how Turfed lets you know your Hang is done.", "/me")
-    return {"devices": devices}
+def test(user: User = Depends(current_user)):
+    """Sends a notification to all of your devices right away and reports what happened."""
+    results = notify.send_now(user.id, "Notifications are on", "This is how Turfed lets you know your Hang is done.",
+                              "/me")
+    return {
+        "devices": len(results),
+        "delivered": sum(r["ok"] for r in results),
+        "expired": sum(r["expired"] for r in results),
+        "errors": [r["error"] for r in results if r["error"] and not r["expired"]],
+    }
