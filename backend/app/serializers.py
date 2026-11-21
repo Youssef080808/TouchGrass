@@ -2,9 +2,11 @@
 from sqlalchemy.orm import Session
 
 from . import territory
-from .models import Hang, Team, User
+from .models import Hang, HangMember, Team, User
 from .points import party_multiplier
-from .timeutil import iso
+from .timeutil import iso, utcnow
+
+PHONES_DOWN_HEARTBEAT_GRACE_S = 20  # a phones-down stretch only counts up to 20 s after the last heartbeat
 
 
 def team_out(team: Team | None) -> dict | None:
@@ -25,21 +27,35 @@ def user_out(user: User) -> dict:
     }
 
 
+def phones_down_active(m: HangMember) -> bool:
+    if m.phones_down_since is None or m.phones_down_seen_at is None:
+        return False
+    return (utcnow() - m.phones_down_seen_at).total_seconds() <= PHONES_DOWN_HEARTBEAT_GRACE_S
+
+
+def counted_party(hang: Hang, m: HangMember) -> tuple[int, int]:
+    """(teammates, other players) who count toward this member's party bonus.
+    Everyone who joined counts, except people who walked away from the Hang."""
+    others = [o for o in hang.members if o.id != m.id and o.left_reason != "left_area"]
+    teammates = sum(1 for o in others if o.user.team_id == m.user.team_id)
+    return teammates, len(others) - teammates
+
+
 def hang_out(db: Session, hang: Hang) -> dict:
     members = []
     for m in hang.members:
-        if m.break_reason == "left" and hang.status == "active":
-            continue  # people who left aren't shown in a live Hang
-        others = [o for o in hang.members if o.id != m.id]
-        teammates = sum(1 for o in others if o.user.team_id == m.user.team_id)
+        teammates, others = counted_party(hang, m)
         members.append({
             "user_id": m.user_id,
             "name": m.user.name,
             "team": team_out(m.user.team),
             "joined_at": iso(m.joined_at),
-            "broke_at": iso(m.broke_at),
-            "break_reason": m.break_reason,
-            "party_multiplier": 1.0 if m.broke_at else round(party_multiplier(teammates, len(others) - teammates), 2),
+            "left_at": iso(m.left_at),
+            "left_reason": m.left_reason,
+            "phones_down_active": phones_down_active(m),
+            "phones_down_since": iso(m.phones_down_since),
+            "phones_down_seconds": round(m.phones_down_seconds or 0),
+            "party_multiplier": round(party_multiplier(teammates, others), 2),
             "points_earned": m.points_earned,
             "breakdown": m.breakdown,
         })

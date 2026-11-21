@@ -3,7 +3,7 @@
 Team         a friend group; territory belongs to teams
 User         one player (no passwords: a random token identifies the device)
 Hang         one session, solo or group, at one place
-HangMember   who was in a Hang, when they joined, whether they picked up their phone
+HangMember   who was in a Hang, when they joined and left, their phones-down bonus time
 HexScore     points a team earned in one map hexagon (territory is the sum, fading over time)
 Notification Friend or Foe alerts and other messages
 """
@@ -78,9 +78,15 @@ class HangMember(Base):
     hang_id: Mapped[int] = mapped_column(ForeignKey("hangs.id"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     joined_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-    broke_at: Mapped[datetime | None] = mapped_column(DateTime)          # when they picked up / left
-    break_reason: Mapped[str | None] = mapped_column(String(20))        # picked_up, left_app, left_area, left
-    last_ping_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # When their time stopped counting before the Hang ended: checked out, or walked away.
+    left_at: Mapped[datetime | None] = mapped_column(DateTime)
+    left_reason: Mapped[str | None] = mapped_column(String(20))          # checked_out, left_area
+    # Last time their location was confirmed at the Hang (join, an in-range ping, check-out).
+    last_verified_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # Optional phones-down bonus: time spent with the app open on the black screen, phone face-down.
+    phones_down_seconds: Mapped[float] = mapped_column(Float, default=0)
+    phones_down_since: Mapped[datetime | None] = mapped_column(DateTime)  # current stretch started
+    phones_down_seen_at: Mapped[datetime | None] = mapped_column(DateTime)  # last heartbeat
     points_earned: Mapped[int | None] = mapped_column(Integer)
     breakdown: Mapped[dict | None] = mapped_column(JSON)
 
