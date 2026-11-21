@@ -174,8 +174,9 @@ export default function Home() {
       <header className="flex items-center gap-3 pb-4 pt-5">
         <Avatar name={user.name} color={user.team?.color} size={44} />
         <div className="min-w-0 flex-1">
-          <h1 className="truncate font-display text-[28px] font-bold leading-none">Hey {user.name}</h1>
-          <p className="mt-1 truncate text-sm font-medium text-muted">{user.team ? `Playing for ${user.team.name}` : 'No team yet'}</p>
+          {/* leading-tight, not leading-none: truncate cuts off anything outside the line, like the tails of y and g */}
+          <h1 className="truncate font-display text-[28px] font-bold leading-tight">Hey {user.name}</h1>
+          <p className="truncate text-sm font-medium text-muted">{user.team ? `Playing for ${user.team.name}` : 'No team yet'}</p>
         </div>
         <button
           aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
