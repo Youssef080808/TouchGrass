@@ -3,7 +3,7 @@
 // plain JS, pauses when off screen or in a background tab, lower resolution on phones to save battery,
 // frees its WebGL context on unmount (screens remount on every page change), and a still frame for
 // people who ask for reduced motion.
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const VERTEX = `
   attribute vec2 position;
@@ -106,7 +106,8 @@ function compile(gl, type, source) {
  * color1 = the glass panes, color2 = the background, color3 = the lit edges.
  * speed 0 freezes it; scale packs the folds tighter; noise is film grain (0 to 0.5).
  * maxDpr caps the resolution (1.25 is plenty for a soft background and much lighter on a phone).
- * If WebGL isn't available the canvas stays transparent, so give the parent a background colour.
+ * Fails safe: the canvas stays invisible until it has drawn a frame, and hides again if the browser drops
+ * the WebGL context, so the parent's background colour shows instead of a blank or broken canvas.
  */
 export default function GlassFold({
   color1 = '#1c3f7a',
@@ -119,6 +120,9 @@ export default function GlassFold({
   className = '',
 }) {
   const canvasRef = useRef(null)
+  // A new epoch means a brand-new canvas (and context), used when the old context was lost
+  const [epoch, setEpoch] = useState(0)
+  const [ready, setReady] = useState(false)
   // The draw loop reads the latest props from here, so changing one never rebuilds the WebGL program
   const props = useRef({ color1, color2, color3, speed, scale, noise, maxDpr })
   useEffect(() => {
@@ -128,13 +132,35 @@ export default function GlassFold({
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return undefined
-    const gl = canvas.getContext('webgl', { antialias: false, alpha: false, powerPreference: 'low-power' })
-    if (!gl) return undefined
+    let gl = null
+    try {
+      gl = canvas.getContext('webgl', { antialias: false, alpha: false, powerPreference: 'low-power' })
+    } catch {
+      gl = null
+    }
+    if (!gl) return undefined // no WebGL: stay hidden, the background colour shows
+    const restart = () => {
+      setReady(false)
+      setEpoch((n) => n + 1)
+    }
+    if (gl.isContextLost()) {
+      // This canvas's context was already dropped (for example by a hot reload while developing):
+      // start again on a fresh canvas, a few times at most
+      if (epoch < 3) restart()
+      return undefined
+    }
 
     const program = gl.createProgram()
-    gl.attachShader(program, compile(gl, gl.VERTEX_SHADER, VERTEX))
-    gl.attachShader(program, compile(gl, gl.FRAGMENT_SHADER, FRAGMENT))
+    const vs = compile(gl, gl.VERTEX_SHADER, VERTEX)
+    const fs = compile(gl, gl.FRAGMENT_SHADER, FRAGMENT)
+    gl.attachShader(program, vs)
+    gl.attachShader(program, fs)
     gl.linkProgram(program)
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      // The shader doesn't run on this device: stay hidden
+      gl.deleteProgram(program)
+      return undefined
+    }
     gl.useProgram(program)
 
     const buffer = gl.createBuffer()
@@ -170,8 +196,11 @@ export default function GlassFold({
     let last = null
     let frame = 0
     let visible = true
+    let lost = false
+    let shown = false
 
     const draw = (now) => {
+      if (lost) return
       const p = props.current
       // Add up speed over time, so changing it never makes the pattern jump
       if (last !== null) elapsed += Math.min((now - last) / 1000, 0.1) * p.speed
@@ -185,12 +214,16 @@ export default function GlassFold({
       gl.uniform1f(u.noise, p.noise)
       gl.uniform2f(u.resolution, canvas.width, canvas.height)
       gl.drawArrays(gl.TRIANGLES, 0, 6)
+      if (!shown && !gl.isContextLost()) {
+        shown = true
+        setReady(true) // fade in only once a real frame is on screen
+      }
     }
 
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const loop = (now) => {
       draw(now)
-      if (!still && visible) frame = requestAnimationFrame(loop)
+      if (!still && visible && !lost) frame = requestAnimationFrame(loop)
     }
     const start = () => {
       cancelAnimationFrame(frame)
@@ -212,28 +245,50 @@ export default function GlassFold({
     })
     ro.observe(canvas)
 
+    // The browser can drop the context (low memory, GPU reset, app in the background): hide right away
+    // instead of showing a blank canvas, and come back on a fresh canvas if the browser restores it.
+    const onLost = (e) => {
+      e.preventDefault()
+      lost = true
+      cancelAnimationFrame(frame)
+      setReady(false)
+    }
+    canvas.addEventListener('webglcontextlost', onLost)
+    canvas.addEventListener('webglcontextrestored', restart)
+
     return () => {
       cancelAnimationFrame(frame)
       io.disconnect()
       ro.disconnect()
-      gl.deleteBuffer(buffer)
-      gl.deleteProgram(program)
+      canvas.removeEventListener('webglcontextlost', onLost)
+      canvas.removeEventListener('webglcontextrestored', restart)
+      if (!gl.isContextLost()) {
+        gl.deleteBuffer(buffer)
+        gl.deleteProgram(program)
+      }
       // Free the context once the canvas has really left the page (browsers allow only a few at once).
       // Not straight away: in development React runs this cleanup and then sets up the same canvas again,
       // and a lost context can't draw anymore.
       const lose = gl.getExtension('WEBGL_lose_context')
       setTimeout(() => {
-        if (!canvas.isConnected) lose?.loseContext()
+        if (!canvas.isConnected && !gl.isContextLost()) lose?.loseContext()
       }, 0)
     }
-  }, [])
+  }, [epoch])
 
   return (
     <canvas
+      key={epoch}
       ref={canvasRef}
       aria-hidden="true"
       className={className}
-      style={{ display: 'block', width: '100%', height: '100%' }}
+      style={{
+        display: 'block',
+        width: '100%',
+        height: '100%',
+        opacity: ready ? 1 : 0,
+        transition: 'opacity 0.6s ease',
+      }}
     />
   )
 }
