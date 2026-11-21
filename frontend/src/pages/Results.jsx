@@ -2,6 +2,7 @@ import { CloudRain, Dumbbell, Flag, Flame, Hexagon, Map as MapIcon, MapPinOff, S
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CountUp } from '../components/AnimatedNumber'
+import GlassFold from '../components/GlassFold'
 import { Avatar, Button, Card, Rise, SectionTitle, TeamDot } from '../components/ui'
 import { celebrate } from '../lib/confetti'
 import { BUZZ, haptic } from '../lib/haptics'
@@ -74,9 +75,13 @@ export default function Results({ hang, me }) {
 
   return (
     <div className="min-h-dvh bg-canvas pb-10">
-      <header className="pt-safe bg-hex rounded-b-[36px] bg-brand px-5 pb-12 text-center text-white">
+      <header className="pt-safe relative overflow-hidden rounded-b-[36px] bg-brand px-5 pb-12 text-center text-white">
+        {/* Celebration background: blue folded glass, so the lime score stands out */}
+        <GlassFold color1="#1e3cc8" color2="#06081e" color3="#96d7ff" speed={0.6} scale={1.2} className="absolute inset-0" />
+        <div className="pointer-events-none absolute inset-0 bg-[#0b1d3a]/35" aria-hidden />
+        <div className="relative">
         <p className="pt-10 font-display text-lg font-bold uppercase tracking-[0.3em] text-white/50">Hang over</p>
-        <p className="mt-2 font-display text-[96px] font-extrabold leading-none text-lime motion-safe:animate-pop">
+        <p className="mt-2 font-display text-[96px] font-extrabold leading-none text-lime drop-shadow-[0_4px_24px_rgba(0,0,0,0.45)] motion-safe:animate-pop">
           +<CountUp to={points} />
         </p>
         <p className="mt-1 text-[15px] text-white/70">points{hang.place_name ? ` at ${hang.place_name}` : ''}</p>
@@ -94,9 +99,10 @@ export default function Results({ hang, me }) {
             This Hang ended by itself: nobody opened the app for 3 hours, so time counts up to the last check-in.
           </p>
         )}
+        </div>
       </header>
 
-      <div className="-mt-6 space-y-4 px-4">
+      <div className="relative -mt-6 space-y-4 px-4">
         {b && (
           <Card className="shadow-lg shadow-black/5">
             <SectionTitle>How you scored</SectionTitle>

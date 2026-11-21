@@ -7,6 +7,7 @@ import { Button, ErrorText, Rise } from '../components/ui'
 import { APP_NAME, TAGLINE, TEAM_COLORS } from '../config'
 import { getPosition } from '../lib/location'
 import { useUser } from '../user'
+import GlassFold from '../components/GlassFold'
 
 export const PENDING_JOIN_KEY = 'tg_pending_join'
 
@@ -116,13 +117,11 @@ export default function Onboarding() {
 
   if (STEPS[step] === 'welcome') {
     return (
-      <div className="bg-hex relative flex min-h-dvh flex-col justify-between overflow-hidden bg-brand px-6 pb-10 pt-16 text-white">
-        <div className="pointer-events-none absolute -right-10 top-16 opacity-90" aria-hidden>
-          <Hexagon className="size-40 text-lime motion-safe:animate-float" strokeWidth={1.2} style={{ fill: 'rgb(190 242 100 / 0.12)' }} />
-        </div>
-        <div className="pointer-events-none absolute bottom-40 right-8" aria-hidden>
-          <Hexagon className="size-16 text-sky-300 motion-safe:animate-float" strokeWidth={1.5} style={{ animationDelay: '1.2s', fill: 'rgb(125 211 252 / 0.12)' }} />
-        </div>
+      <div className="relative flex min-h-dvh flex-col justify-between overflow-hidden bg-brand px-6 pb-10 pt-16 text-white">
+        {/* Animated folded glass in the brand colours, a faint honeycomb, and a shade so the text stays readable */}
+        <GlassFold color1="#1c3f7a" color2="#0b1d3a" color3="#bef264" speed={0.35} className="absolute inset-0" />
+        <div className="bg-hex pointer-events-none absolute inset-0 opacity-60" aria-hidden />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#0b1d3a]/70 via-[#0b1d3a]/20 to-[#0b1d3a]/85" aria-hidden />
 
         <div className="relative">
           <Rise>
@@ -135,7 +134,7 @@ export default function Onboarding() {
           <ul className="mt-10 space-y-3">
             {FEATURES.map(({ Icon, text }, i) => (
               <Rise key={text} i={i + 2} as="li" className="flex items-center gap-3">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-white/10">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-white/10 backdrop-blur">
                   <Icon className="size-5 text-lime" aria-hidden />
                 </span>
                 <span className="text-[16px] text-white/85">{text}</span>
@@ -143,7 +142,7 @@ export default function Onboarding() {
             ))}
           </ul>
         </div>
-        <Rise i={6}>
+        <Rise i={6} className="relative">
           <Button variant="lime" className="h-14 w-full text-lg" onClick={next}>
             Get started
           </Button>

@@ -34,6 +34,9 @@ Dockerfile              builds everything into one container for deploying
 - Fonts: Barlow Condensed for headings and numbers, Barlow for text (bundled, no Google Fonts request).
 - From [21st.dev](https://21st.dev): the floating tab bar (`components/TabBar.jsx`, based on "Bottom Nav Bar" by
   arunachalam) and rolling numbers (`components/AnimatedNumber.jsx`, based on "Animated Number" by ikascom).
+- Animated folded-glass backgrounds on the welcome and results screens (`components/GlassFold.jsx`, a WebGL
+  shader from [GradFlow](https://gradflow.meerbahadin.dev) via 21st.dev). Only on those two one-off screens to save
+  battery; it pauses off screen and falls back to plain navy without WebGL.
 - Confetti on the results screen uses `canvas-confetti`. All animations turn off when the phone asks for reduced motion.
 
 ## Run it locally
