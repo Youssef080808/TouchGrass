@@ -2,13 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { CircleMarker, MapContainer, Polygon, Popup, TileLayer } from 'react-leaflet'
 import { api } from '../api'
 import { TeamDot } from '../components/ui'
-import { DEFAULT_CENTER, MAP_TILES } from '../config'
+import { DEFAULT_CENTER, MAP_TILES, MAP_TILES_DARK } from '../config'
 import { getPosition } from '../lib/location'
+import { useTheme } from '../theme'
 import { useUser } from '../user'
 
 /** The city as a board game: each hexagon is coloured by the team that holds it. */
 export default function MapPage() {
   const { user } = useUser()
+  const { dark } = useTheme()
   const [hexes, setHexes] = useState([])
   const [me, setMe] = useState(null)
 
@@ -40,7 +42,16 @@ export default function MapPage() {
         className="absolute inset-0 z-0"
         style={{ height: '100%', width: '100%' }}
       >
-        <TileLayer url={MAP_TILES.url} attribution={MAP_TILES.attribution} maxZoom={MAP_TILES.maxZoom} />
+        {dark ? (
+          <>
+            <TileLayer key="dark" url={MAP_TILES_DARK.url} attribution={MAP_TILES_DARK.attribution}
+              maxNativeZoom={MAP_TILES_DARK.maxNativeZoom} maxZoom={MAP_TILES_DARK.maxZoom} />
+            <TileLayer key="dark-labels" url={MAP_TILES_DARK.labelsUrl}
+              maxNativeZoom={MAP_TILES_DARK.maxNativeZoom} maxZoom={MAP_TILES_DARK.maxZoom} />
+          </>
+        ) : (
+          <TileLayer key="light" url={MAP_TILES.url} attribution={MAP_TILES.attribution} maxZoom={MAP_TILES.maxZoom} />
+        )}
         {hexes.map((h) => {
           const color = h.owner?.color ?? '#94a3b8'
           const mine = h.owner && h.owner.id === user.team?.id
@@ -58,7 +69,7 @@ export default function MapPage() {
             >
               <Popup>
                 <p className="m-0 font-semibold">{h.owner ? `${h.owner.name} hold this zone` : 'Nobody holds this zone'}</p>
-                {h.contested && <p className="m-0 text-red-600">Contested! It could flip any time.</p>}
+                {h.contested && <p className="m-0 text-danger">Contested! It could flip any time.</p>}
                 <ul className="m-0 mt-2 list-none p-0">
                   {h.scores.map((s) => (
                     <li key={s.id} className="flex items-center gap-2">
@@ -80,16 +91,16 @@ export default function MapPage() {
       </MapContainer>
 
       <div className="pt-safe pointer-events-none absolute inset-x-0 top-0 z-[500] p-4">
-        <div className="pointer-events-auto rounded-3xl bg-white/95 p-4 shadow-lg backdrop-blur">
+        <div className="pointer-events-auto rounded-3xl bg-surface/95 p-4 shadow-lg backdrop-blur">
           <h1 className="text-lg font-bold">Territory</h1>
-          <p className="text-sm text-slate-500">Hang out somewhere to claim it for your team. Dashed = contested.</p>
+          <p className="text-sm text-muted">Hang out somewhere to claim it for your team. Dashed = contested.</p>
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
             {legend.map((t) => (
               <span key={t.id} className={`flex items-center gap-1.5 text-sm ${t.id === user.team?.id ? 'font-bold' : ''}`}>
                 <TeamDot color={t.color} /> {t.name} · {t.hexes}
               </span>
             ))}
-            {!legend.length && <span className="text-sm text-slate-400">No territory yet. Be the first!</span>}
+            {!legend.length && <span className="text-sm text-faint">No territory yet. Be the first!</span>}
           </div>
         </div>
       </div>

@@ -36,15 +36,15 @@ function phonesDownBonus(member) {
 
 function MemberStatus({ m }) {
   if (m.left_reason === 'checked_out') {
-    return <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">Checked out</span>
+    return <span className="rounded-full bg-chip px-2.5 py-1 text-xs font-semibold text-muted">Checked out</span>
   }
   if (m.left_reason === 'left_area') {
-    return <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600">Left</span>
+    return <span className="rounded-full bg-danger-soft px-2.5 py-1 text-xs font-semibold text-danger">Left</span>
   }
   if (m.phones_down_active) {
-    return <span className="rounded-full bg-lime/60 px-2.5 py-1 text-xs font-semibold text-forest">Phones down</span>
+    return <span className="rounded-full bg-lime/60 px-2.5 py-1 text-xs font-semibold text-on-accent">Phones down</span>
   }
-  return <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">Here</span>
+  return <span className="rounded-full bg-chip px-2.5 py-1 text-xs font-semibold text-muted">Here</span>
 }
 
 export default function HangPage() {
@@ -186,7 +186,7 @@ export default function HangPage() {
         <PhoneDownOverlay hang={hang} me={me} isHost={isHost} bonus={bonus} onStop={stopPhonesDown} onEnd={endHang} />
       )}
 
-      <header className="pt-safe bg-forest px-5 pb-8 text-white">
+      <header className="pt-safe bg-brand px-5 pb-8 text-white">
         <div className="flex items-center justify-between pt-4">
           <button aria-label="Back" onClick={() => navigate('/')} className="-ml-2 rounded-full p-2 active:bg-white/10">
             <ArrowLeft className="size-5" />
@@ -201,7 +201,7 @@ export default function HangPage() {
         <p className="mt-6 text-center text-sm text-white/60">{me.left_at ? 'Your time (stopped)' : 'Time together'}</p>
         <p className="text-center font-mono text-6xl font-light tabular-nums">{formatDuration(together)}</p>
         <div className="mt-4 flex flex-wrap justify-center gap-2 text-sm">
-          <span className="inline-flex items-center gap-1 rounded-full bg-lime px-3 py-1 font-semibold text-forest">
+          <span className="inline-flex items-center gap-1 rounded-full bg-lime px-3 py-1 font-semibold text-on-accent">
             <Users className="size-4" /> Party x{me.party_multiplier}
           </span>
           <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1 font-semibold">
@@ -221,7 +221,7 @@ export default function HangPage() {
             <p className="font-semibold">
               {me.left_reason === 'checked_out' ? "You're checked out." : 'You left the Hang area, so your time stopped.'}
             </p>
-            <p className="mt-1 text-slate-500">You'll get your points when {hostName} ends the Hang.</p>
+            <p className="mt-1 text-muted">You'll get your points when {hostName} ends the Hang.</p>
             <Button variant="secondary" className="mt-3 h-10 w-full" onClick={() => navigate('/')}>
               Home
             </Button>
@@ -229,28 +229,28 @@ export default function HangPage() {
         ) : (
           <Card className="flex items-start gap-3">
             <div className="rounded-2xl bg-canvas p-2.5">
-              <Lock className="size-5 text-forest" />
+              <Lock className="size-5 text-brand-ink" />
             </div>
-            <p className="text-[15px] text-slate-600">
-              <span className="font-semibold text-slate-900">Lock your phone and put it away.</span> Your time keeps
+            <p className="text-[15px] text-ink-soft">
+              <span className="font-semibold text-ink">Lock your phone and put it away.</span> Your time keeps
               counting until you check out{isHost ? ' or end the Hang' : ` or ${hostName} ends the Hang`}.
             </p>
           </Card>
         )}
 
         {pauseNote && (
-          <p className="rounded-2xl bg-amber-50 px-3 py-2 text-sm text-amber-800">{pauseNote} Your time together still counts.</p>
+          <p className="rounded-2xl bg-warn-soft px-3 py-2 text-sm text-warn">{pauseNote} Your time together still counts.</p>
         )}
 
         {hang.kind === 'group' && stillHere && (
           <Card className="flex items-center gap-4">
-            <div className="rounded-2xl bg-white p-1 ring-1 ring-black/5">
-              <QRCodeSVG value={joinUrl} size={112} fgColor="#0d3b23" />
+            <div className="rounded-2xl bg-[#ffffff] p-1">
+              <QRCodeSVG value={joinUrl} size={112} fgColor="#0b1d3a" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm text-slate-500">Friends scan this with their camera, or enter</p>
-              <p className="mt-1 text-3xl font-black tracking-[0.2em] text-forest">{hang.code}</p>
-              <p className="mt-1 text-xs text-slate-400">They need to be within 100 m of you.</p>
+              <p className="text-sm text-muted">Friends scan this with their camera, or enter</p>
+              <p className="mt-1 text-3xl font-black tracking-[0.2em] text-brand-ink">{hang.code}</p>
+              <p className="mt-1 text-xs text-faint">They need to be within 100 m of you.</p>
             </div>
           </Card>
         )}
@@ -264,10 +264,10 @@ export default function HangPage() {
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-1.5 font-semibold">
                     {m.name}
-                    {m.user_id === user.id && <span className="text-slate-400">(you)</span>}
+                    {m.user_id === user.id && <span className="text-faint">(you)</span>}
                     {m.user_id === hang.host_id && <Crown className="size-4 text-amber-500" />}
                   </p>
-                  <p className="flex items-center gap-1.5 text-sm text-slate-500">
+                  <p className="flex items-center gap-1.5 text-sm text-muted">
                     <TeamDot color={m.team?.color} className="size-2" /> {m.team?.name}
                   </p>
                 </div>
@@ -276,7 +276,7 @@ export default function HangPage() {
             ))}
           </ul>
           {hang.kind === 'group' && hang.members.length === 1 && (
-            <p className="mt-3 text-sm text-slate-400">Waiting for friends to join...</p>
+            <p className="mt-3 text-sm text-faint">Waiting for friends to join...</p>
           )}
         </Card>
 
@@ -287,7 +287,7 @@ export default function HangPage() {
             <Button variant="lime" className="h-14 w-full text-lg" onClick={startPhonesDown}>
               <Smartphone className="size-5 rotate-180" /> Phones-down mode · up to x1.5
             </Button>
-            <p className="-mt-2 text-center text-xs text-slate-400">
+            <p className="-mt-2 text-center text-xs text-faint">
               Optional bonus: keep the app open on a black screen with your phone face-down.
             </p>
           </>
@@ -303,7 +303,7 @@ export default function HangPage() {
             </Button>
           )
         )}
-        <p className="text-center text-xs text-slate-400">
+        <p className="text-center text-xs text-faint">
           {isHost
             ? 'Ending checks your location, then everyone gets their points.'
             : 'Checking out checks your location. Points arrive when the host ends the Hang.'}

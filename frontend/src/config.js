@@ -17,3 +17,12 @@ export const MAP_TILES = {
   attribution: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, OpenStreetMap contributors',
   maxZoom: 19,
 }
+
+// Dark-theme map: Esri dark grey base plus an English labels layer on top
+export const MAP_TILES_DARK = {
+  url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+  labelsUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+  attribution: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, OpenStreetMap contributors',
+  maxNativeZoom: 16,
+  maxZoom: 19,
+}
