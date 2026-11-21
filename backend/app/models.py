@@ -63,6 +63,8 @@ class Hang(Base):
     status: Mapped[str] = mapped_column(String(10), default="active", index=True)  # active / ended
     started_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # Who held the zone just before this Hang ended, so the app can show a capture
+    hex_owner_before_id: Mapped[int | None] = mapped_column(Integer)
 
     host: Mapped[User] = relationship()
     members: Mapped[list["HangMember"]] = relationship(

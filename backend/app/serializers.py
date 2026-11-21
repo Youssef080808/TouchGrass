@@ -73,8 +73,11 @@ def hang_out(db: Session, hang: Hang) -> dict:
         "ended_at": iso(hang.ended_at),
         "members": members,
         "hex_owner": None,
+        "hex_owner_before": None,
     }
     if hang.status == "ended":
         owner_id = territory.owner_of(db, hang.hex_id)
         data["hex_owner"] = team_out(db.get(Team, owner_id)) if owner_id else None
+        before_id = hang.hex_owner_before_id
+        data["hex_owner_before"] = team_out(db.get(Team, before_id)) if before_id else None
     return data

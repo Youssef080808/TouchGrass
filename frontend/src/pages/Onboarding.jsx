@@ -53,7 +53,14 @@ export default function Onboarding() {
         if (Array.isArray(items) && items.length > 0) setAllInterests(items)
       })
       .catch(() => {})
-    api('/teams').then(setTeams).catch(() => {})
+    api('/teams')
+      .then((list) => {
+        setTeams(list)
+        // A new team starts with a colour nobody uses yet, so its zones stand out on the map
+        const used = new Set(list.map((t) => t.color?.toLowerCase()))
+        setNewColor((c) => (used.has(c) ? (TEAM_COLORS.find((x) => !used.has(x)) ?? c) : c))
+      })
+      .catch(() => {})
   }, [])
 
   const toggleInterest = (i) =>

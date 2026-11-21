@@ -251,6 +251,7 @@ def end_hang(hang_id: int, body: Location, user: User = Depends(current_user), d
     now = utcnow()
     hang.status, hang.ended_at = "ended", now
     owner_before = territory.owner_of(db, hang.hex_id)
+    hang.hex_owner_before_id = owner_before
     today = local_today()
     day_start = local_day_start_utc(today)
 
