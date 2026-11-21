@@ -9,6 +9,7 @@ import { useUser } from '../user'
 export function useMyTeam({ poll = 0 } = {}) {
   const { user, refresh } = useUser()
   const [data, setData] = useState(null)
+  const [error, setError] = useState(null)
   const teamId = user.team?.id ?? null
 
   // Use every /me/team answer; if your team changed (say someone just accepted you), refresh the signed-in user.
@@ -21,7 +22,19 @@ export function useMyTeam({ poll = 0 } = {}) {
     [teamId, refresh],
   )
 
-  const load = useCallback(() => api('/me/team').then(apply).catch(() => {}), [apply])
+  const load = useCallback(
+    () =>
+      api('/me/team')
+        .then((d) => {
+          setError(null)
+          return apply(d)
+        })
+        .catch((e) => {
+          setError(e.message)
+          return null
+        }),
+    [apply],
+  )
 
   useEffect(() => {
     load()
@@ -30,5 +43,5 @@ export function useMyTeam({ poll = 0 } = {}) {
     return () => clearInterval(t)
   }, [load, poll])
 
-  return { data, apply, load }
+  return { data, apply, load, error }
 }
