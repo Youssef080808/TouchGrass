@@ -1,7 +1,7 @@
 {
-  "name": "TouchGrass",
-  "short_name": "TouchGrass",
-  "description": "Phones down. Friends up. Claim your city.",
+  "name": "Turfed",
+  "short_name": "Turfed",
+  "description": "Phones down. Crew up. Take your turf.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",

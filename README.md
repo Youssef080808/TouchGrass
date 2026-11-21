@@ -1,8 +1,8 @@
-# TouchGrass
+# Turfed
 
-**Phones down. Friends up. Claim your city.**
+**Phones down. Crew up. Take your turf.**
 
-TouchGrass rewards time spent off your phone with real people. Start a Hang somewhere real, friends join by scanning
+Turfed rewards time spent off your phone with real people. Start a Hang somewhere real, friends join by scanning
 your QR code, everyone puts their phone face-down, and you earn points. Points also claim map hexagons for your
 team, so your crew can take over parks and neighbourhoods. When another team takes one of your zones, you get a
 **Friend or Foe** choice: fight back, or team up for a joint Hang.

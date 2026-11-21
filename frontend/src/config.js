@@ -1,5 +1,5 @@
-export const APP_NAME = 'TouchGrass'
-export const TAGLINE = 'Phones down. Friends up. Claim your city.'
+export const APP_NAME = 'Turfed'
+export const TAGLINE = 'Phones down. Crew up. Take your turf.'
 
 // '' means "same server": the Vite proxy in development, FastAPI serving the build in production.
 // Set VITE_API_URL only if the front end and API are hosted on different domains.
