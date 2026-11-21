@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0d3b23" />
+    <meta name="theme-color" content="#0b1d3a" />
     <meta name="description" content="Phones down. Friends up. Claim your city." />
     <!-- Lets people "Add to Home Screen" so it opens full-screen like a native app -->
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -14,6 +14,15 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="TouchGrass" />
     <title>TouchGrass</title>
+    <script>
+      // Apply the saved light/dark theme before the page draws, so there's no flash
+      try {
+        var t = localStorage.getItem('tg_theme') || 'system'
+        if (t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -91,7 +91,7 @@ export default function Onboarding() {
 
   if (STEPS[step] === 'welcome') {
     return (
-      <div className="flex min-h-dvh flex-col justify-between bg-forest px-6 pb-10 pt-20 text-white">
+      <div className="flex min-h-dvh flex-col justify-between bg-brand px-6 pb-10 pt-20 text-white">
         <div>
           <div className="mb-8 flex items-end gap-1.5">
             {[44, 64, 52, 72, 48].map((h, i) => (
@@ -116,12 +116,12 @@ export default function Onboarding() {
   return (
     <div className="flex min-h-dvh flex-col bg-canvas px-5 pb-8 pt-6">
       <div className="mb-6 flex items-center gap-3">
-        <button aria-label="Back" onClick={() => setStep(step - 1)} className="rounded-full p-2 active:bg-black/5">
+        <button aria-label="Back" onClick={() => setStep(step - 1)} className="rounded-full p-2 active:bg-line">
           <ArrowLeft className="size-5" />
         </button>
         <div className="flex flex-1 gap-1.5">
           {STEPS.slice(1).map((s, i) => (
-            <span key={s} className={`h-1.5 flex-1 rounded-full ${i < step ? 'bg-forest' : 'bg-black/10'}`} />
+            <span key={s} className={`h-1.5 flex-1 rounded-full ${i < step ? 'bg-brand' : 'bg-line'}`} />
           ))}
         </div>
       </div>
@@ -136,14 +136,14 @@ export default function Onboarding() {
               maxLength={40}
               onChange={(e) => setName(e.target.value)}
               placeholder="Your first name"
-              className="mt-6 h-14 w-full rounded-2xl bg-white px-4 text-lg outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-forest"
+              className="mt-6 h-14 w-full rounded-2xl bg-surface px-4 text-lg outline-none ring-1 ring-line focus:ring-2 focus:ring-brand-ink"
             />
-            <label className="mt-5 flex items-start gap-3 text-[15px] text-slate-700">
+            <label className="mt-5 flex items-start gap-3 text-[15px] text-ink-soft">
               <input
                 type="checkbox"
                 checked={isAdult}
                 onChange={(e) => setIsAdult(e.target.checked)}
-                className="mt-1 size-5 accent-forest"
+                className="mt-1 size-5 accent-brand-ink"
               />
               I'm 18 or older. {APP_NAME} helps adults meet up in real life.
             </label>
@@ -153,7 +153,7 @@ export default function Onboarding() {
         {STEPS[step] === 'interests' && (
           <section>
             <h2 className="text-3xl font-bold tracking-tight">What do you like doing?</h2>
-            <p className="mt-2 text-slate-500">We use this to suggest places and people.</p>
+            <p className="mt-2 text-muted">We use this to suggest places and people.</p>
             <div className="mt-6 flex flex-wrap gap-2">
               {allInterests.map((i) => {
                 const on = interests.includes(i)
@@ -162,7 +162,7 @@ export default function Onboarding() {
                     key={i}
                     onClick={() => toggleInterest(i)}
                     className={`rounded-full px-4 py-2.5 text-[15px] font-medium transition ${
-                      on ? 'bg-forest text-white' : 'bg-white text-slate-700 ring-1 ring-black/10'
+                      on ? 'bg-brand text-white' : 'bg-surface text-ink-soft ring-1 ring-line'
                     }`}
                   >
                     {i}
@@ -176,7 +176,7 @@ export default function Onboarding() {
         {STEPS[step] === 'team' && (
           <section>
             <h2 className="text-3xl font-bold tracking-tight">Pick your crew</h2>
-            <p className="mt-2 text-slate-500">Your team claims territory together. Join your friends' team or start one.</p>
+            <p className="mt-2 text-muted">Your team claims territory together. Join your friends' team or start one.</p>
             <div className="mt-6 space-y-2">
               {teams.map((t) => (
                 <button
@@ -185,18 +185,18 @@ export default function Onboarding() {
                     setTeamId(t.id)
                     setNewTeam('')
                   }}
-                  className={`flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left ring-1 ${
-                    teamId === t.id ? 'ring-2 ring-forest' : 'ring-black/10'
+                  className={`flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-left ring-1 ${
+                    teamId === t.id ? 'ring-2 ring-brand-ink' : 'ring-line'
                   }`}
                 >
                   <TeamDot color={t.color} className="size-4" />
                   <span className="flex-1 font-semibold">{t.name}</span>
-                  <span className="text-sm text-slate-400">{t.members} members</span>
-                  {teamId === t.id && <Check className="size-5 text-forest" />}
+                  <span className="text-sm text-faint">{t.members} {t.members === 1 ? "member" : "members"}</span>
+                  {teamId === t.id && <Check className="size-5 text-brand-ink" />}
                 </button>
               ))}
             </div>
-            <div className={`mt-4 rounded-2xl bg-white p-4 ring-1 ${teamId === null && newTeam ? 'ring-2 ring-forest' : 'ring-black/10'}`}>
+            <div className={`mt-4 rounded-2xl bg-surface p-4 ring-1 ${teamId === null && newTeam ? 'ring-2 ring-brand-ink' : 'ring-line'}`}>
               <p className="flex items-center gap-2 font-semibold">
                 <Plus className="size-4" /> New team
               </p>
@@ -208,7 +208,7 @@ export default function Onboarding() {
                   setTeamId(null)
                 }}
                 placeholder="Team name"
-                className="mt-3 h-12 w-full rounded-xl bg-canvas px-3 outline-none focus:ring-2 focus:ring-forest"
+                className="mt-3 h-12 w-full rounded-xl bg-canvas px-3 outline-none focus:ring-2 focus:ring-brand-ink"
               />
               <div className="mt-3 flex gap-2">
                 {TEAM_COLORS.map((c) => (
@@ -216,7 +216,7 @@ export default function Onboarding() {
                     key={c}
                     aria-label={`Colour ${c}`}
                     onClick={() => setNewColor(c)}
-                    className={`size-8 rounded-full ${newColor === c ? 'ring-2 ring-slate-900 ring-offset-2' : ''}`}
+                    className={`size-8 rounded-full ${newColor === c ? 'ring-2 ring-ink ring-offset-2 ring-offset-surface' : ''}`}
                     style={{ backgroundColor: c }}
                   />
                 ))}
@@ -228,13 +228,13 @@ export default function Onboarding() {
         {STEPS[step] === 'home' && (
           <section>
             <h2 className="text-3xl font-bold tracking-tight">Set your home spot</h2>
-            <p className="mt-2 text-slate-500">
+            <p className="mt-2 text-muted">
               Optional. Solo sessions only count when you're away from home, so staying on the couch doesn't earn
               points. It's rounded and never shown to anyone.
             </p>
             <Button variant="secondary" className="mt-6 w-full" onClick={setHomeHere}>
               <MapPin className="size-5" /> {home ? 'Home set' : "I'm home right now"}
-              {home && <Check className="size-5 text-forest" />}
+              {home && <Check className="size-5 text-brand-ink" />}
             </Button>
           </section>
         )}

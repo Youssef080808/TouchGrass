@@ -24,6 +24,7 @@ backend/                FastAPI + SQLAlchemy (Postgres on Neon, or SQLite for qu
 frontend/               React + Vite + Tailwind, phone-first
   src/pages/            Onboarding, Home, HangPage, Results, MapPage, Leaderboard, Profile, JoinPage
   src/hooks/            useHang (live updates), usePhoneDown (phone-down detection)
+  src/index.css         colours for the light and dark themes (change them here)
 Dockerfile              builds everything into one container for deploying
 ```
 

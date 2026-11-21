@@ -31,16 +31,16 @@ OUTDOOR_TYPES = {"park", "hiking_area", "tourist_attraction", "playground", "ath
 
 # Sample data used when there is no Google key. Real Montreal places, approximate coordinates.
 SAMPLE_PLACES = [
-    {"name": "Parc du Mont-Royal", "type": "park", "lat": 45.5036, "lng": -73.5874},
-    {"name": "Parc Jeanne-Mance", "type": "park", "lat": 45.5155, "lng": -73.5862},
-    {"name": "Parc La Fontaine", "type": "park", "lat": 45.5268, "lng": -73.5697},
-    {"name": "Parc Jarry", "type": "park", "lat": 45.5340, "lng": -73.6280},
+    {"name": "Mount Royal Park", "type": "park", "lat": 45.5036, "lng": -73.5874},
+    {"name": "Jeanne-Mance Park", "type": "park", "lat": 45.5155, "lng": -73.5862},
+    {"name": "La Fontaine Park", "type": "park", "lat": 45.5268, "lng": -73.5697},
+    {"name": "Jarry Park", "type": "park", "lat": 45.5340, "lng": -73.6280},
     {"name": "Lachine Canal", "type": "park", "lat": 45.4840, "lng": -73.5770},
     {"name": "Old Port of Montreal", "type": "tourist_attraction", "lat": 45.5075, "lng": -73.5536},
-    {"name": "Grande Bibliothèque", "type": "library", "lat": 45.5154, "lng": -73.5620},
+    {"name": "Grande Bibliothèque (main library)", "type": "library", "lat": 45.5154, "lng": -73.5620},
     {"name": "Montreal Museum of Fine Arts", "type": "museum", "lat": 45.4986, "lng": -73.5794},
     {"name": "McGill Fitness Centre", "type": "gym", "lat": 45.5079, "lng": -73.5803},
-    {"name": "Café Olimpico", "type": "cafe", "lat": 45.5236, "lng": -73.6010},
+    {"name": "Cafe Olimpico", "type": "cafe", "lat": 45.5236, "lng": -73.6010},
 ]
 
 

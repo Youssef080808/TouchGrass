@@ -42,7 +42,7 @@ export default function App() {
       <Shell>
         <div className="flex min-h-dvh flex-col justify-center gap-4 px-6 text-center">
           <p className="text-lg font-semibold">Can't reach the server</p>
-          <p className="text-slate-500">Check your connection, or make sure the backend is running.</p>
+          <p className="text-muted">Check your connection, or make sure the backend is running.</p>
           <Button onClick={refresh}>Try again</Button>
         </div>
       </Shell>
