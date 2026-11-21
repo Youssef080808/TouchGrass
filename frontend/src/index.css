@@ -45,6 +45,32 @@
   from { opacity: 0; transform: translateX(36px); }
 }
 
+/* Liquid text: the letters fill with lime liquid and a wave rolls across the top (components/LiquidText.jsx).
+   The empty part shows as a thin lime outline. --liquid-fill (0 to 1) is animated, so it's registered. */
+@property --liquid-fill {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+.liquid-text {
+  color: transparent;
+  -webkit-text-stroke: 0.018em rgb(190 242 100 / 0.55);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 240' preserveAspectRatio='none'%3E%3Cpath d='M0 12 Q30 0 60 12 T120 12 V240 H0 Z' fill='%23bef264'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 240' preserveAspectRatio='none'%3E%3Cpath d='M0 10 Q40 0 80 10 T160 10 V240 H0 Z' fill='%2384b43a'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-size: 1.2em 2.4em, 1.6em 2.4em;
+  /* The crest sits 0.12em into the picture. Letters span roughly 0.15em to 0.9em of the line, so
+     empty puts the crest at their feet and full at their tops. */
+  background-position-y: calc(0.78em - var(--liquid-fill) * 0.75em), calc(0.72em - var(--liquid-fill) * 0.75em);
+  -webkit-background-clip: text;
+  background-clip: text;
+  transition: --liquid-fill 1.8s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: liquid-wave 2.6s linear infinite;
+}
+@keyframes liquid-wave {
+  from { background-position-x: 0, 0; }
+  to { background-position-x: 1.2em, -1.6em; }
+}
+
 /* Map: the zone your Hang just took flips over to your team's colour, then pulses.
    The colours come from --cap-from / --cap-to set on the map wrapper. */
 .hex-capture {

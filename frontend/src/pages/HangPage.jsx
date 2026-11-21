@@ -5,12 +5,14 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { RollingTimer } from '../components/AnimatedNumber'
 import BonusRing from '../components/BonusRing'
+import GlowRocker from '../components/GlowRocker'
 import PhoneDownOverlay from '../components/PhoneDownOverlay'
 import { Avatar, Button, Card, ErrorText, Rise, SectionTitle, Spinner, TeamDot } from '../components/ui'
 import { useHang } from '../hooks/useHang'
 import { askMotionPermission } from '../hooks/usePhoneDown'
 import { BUZZ, haptic } from '../lib/haptics'
 import { getPosition } from '../lib/location'
+import { useTheme } from '../theme'
 import { useUser } from '../user'
 import Results from './Results'
 
@@ -50,6 +52,9 @@ export default function HangPage() {
   const { user, refresh: refreshUser } = useUser()
   const { hang, setHang, error } = useHang(id)
   const [phonesDown, setPhonesDown] = useState(false)
+  const [rockerOn, setRockerOn] = useState(false)
+  const rockerTimer = useRef(null)
+  const { dark } = useTheme()
   const [pauseNote, setPauseNote] = useState(null)
   const [busy, setBusy] = useState(null)
   const [actionError, setActionError] = useState(null)
@@ -122,19 +127,31 @@ export default function HangPage() {
   const startPhonesDown = async () => {
     setPauseNote(null)
     setActionError(null)
-    await askMotionPermission()
     try {
       setHang(await api(`/hangs/${id}/phones-down`, { method: 'POST', body: { active: true } }))
       haptic(BUZZ.phonesDown)
       setPhonesDown(true)
     } catch (e) {
       setActionError(e.message)
+      setRockerOn(false)
     }
   }
+
+  // The rocker switch: flip it on, watch it rock over and light up, then the black screen opens.
+  const flipPhonesDown = (next) => {
+    clearTimeout(rockerTimer.current)
+    setRockerOn(next)
+    if (!next) return // flipped back before the black screen opened: cancel
+    askMotionPermission() // iPhones only ask from inside the tap itself, so not after the delay
+    haptic(BUZZ.tap)
+    rockerTimer.current = setTimeout(startPhonesDown, 950)
+  }
+  useEffect(() => () => clearTimeout(rockerTimer.current), [])
 
   const stopPhonesDown = useCallback(
     async (reason) => {
       setPhonesDown(false)
+      setRockerOn(false)
       setPauseNote(PAUSE_MESSAGES[reason] ?? null)
       try {
         setHang(await api(`/hangs/${id}/phones-down`, { method: 'POST', body: { active: false } }))
@@ -334,13 +351,31 @@ export default function HangPage() {
         <ErrorText>{actionError}</ErrorText>
 
         {stillHere && (
-          <div>
-            <Button variant="lime" className="h-14 w-full text-lg" onClick={startPhonesDown}>
-              <Smartphone className="size-5 rotate-180" aria-hidden /> Phones-down mode · up to x1.5
-            </Button>
-            <p className="mt-2 text-center text-[13px] text-muted">
-              Optional bonus: keep the app open on a black screen with your phone face-down.
-            </p>
+          <div className="overflow-hidden rounded-3xl bg-surface shadow-lg shadow-black/5 ring-1 ring-line">
+            <div className="h-[300px]">
+              <GlowRocker
+                checked={rockerOn}
+                onChange={flipPhonesDown}
+                ariaLabel="Phones-down mode"
+                offLabel="UP"
+                onLabel="DOWN"
+                bottomLabel="x1"
+                topLabel="x1.5"
+                glowColor="#bef264"
+                labelColor="#bef264"
+                lightColor={dark ? '#17253e' : '#dfe6ef'}
+                darkColor="#0b1d3a"
+                orbit={0}
+                className="h-full w-full"
+              />
+            </div>
+            <div className="flex items-center gap-3 px-4 py-3">
+              <Smartphone className="size-5 shrink-0 rotate-180 text-brand-ink" aria-hidden />
+              <p className="text-[13px] text-muted">
+                <span className="font-semibold text-ink">Phones-down mode, up to x1.5.</span> Flip the switch, then put
+                your phone face-down on the black screen.
+              </p>
+            </div>
           </div>
         )}
         {isHost ? (

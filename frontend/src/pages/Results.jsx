@@ -1,7 +1,7 @@
 import { CloudRain, Dumbbell, Flag, Flame, Hexagon, Map as MapIcon, MapPinOff, Shield, Smartphone, Sparkles, Timer, Users } from 'lucide-react'
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CountUp } from '../components/AnimatedNumber'
+import LiquidText from '../components/LiquidText'
 import GlassFold from '../components/GlassFold'
 import { Avatar, Button, Card, Rise, SectionTitle, TeamDot } from '../components/ui'
 import { celebrate } from '../lib/confetti'
@@ -82,7 +82,7 @@ export default function Results({ hang, me }) {
         <div className="relative">
         <p className="pt-10 font-display text-lg font-bold uppercase tracking-[0.3em] text-white/50">Hang over</p>
         <p className="mt-2 font-display text-[96px] font-extrabold leading-none text-lime drop-shadow-[0_4px_24px_rgba(0,0,0,0.45)] motion-safe:animate-pop">
-          +<CountUp to={points} />
+          <LiquidText fill={points > 0 ? 0.8 : 0.12} delay={350}>+{points}</LiquidText>
         </p>
         <p className="mt-1 text-[15px] text-white/70">points{hang.place_name ? ` at ${hang.place_name}` : ''}</p>
         {points === 0 && !b?.capped && (
