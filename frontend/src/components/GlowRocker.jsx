@@ -1,5 +1,5 @@
 // Glow Rocker by Louis Studios (https://studios.lou15.com), via 21st.dev. Converted from TypeScript to plain JSX
-// for Turfed; the drawing code is unchanged apart from the default font.
+// for Turfed. Our changes: the default font, and the dotsFromTop option.
 //
 // A 3D rocker switch drawn with WebGL (with a canvas 2D fallback). Pressing it rocks the plate over; when it's
 // on, the scene goes dark and the edge glows. It only draws while something is moving, so it costs nothing at rest.
@@ -7,6 +7,7 @@
 // Props: checked / defaultChecked / onChange(next) like a checkbox; view 'iso' | 'close' | 'top';
 // glowColor (wall and leaking light), lightColor / darkColor (scene when off / on), labelColor (lit labels and dots);
 // onLabel / offLabel (the two halves), topLabel / bottomLabel (ends of the dotted line); font; dots;
+// dotsFromTop (light the dotted line from the topLabel end instead of the bottomLabel end);
 // duration (ms per rock); orbit (degrees the camera follows a mouse, 0 = off); ariaLabel; className; style.
 import * as React from 'react'
 /* ------------------------------------------------------------------ */
@@ -163,6 +164,7 @@ uniform float uDark;
 uniform float uBloom;
 uniform float uLit;
 uniform float uDots;
+uniform float uDotsRev;
 uniform vec3 uGlow;
 uniform vec3 uLight;
 uniform vec3 uShade;
@@ -398,7 +400,7 @@ vec3 shadeGround(vec2 xy){
     vec2 dv = xy - vec2(DX, DY0 + di * sp);
     float dd = length(dv);
     float disc = smoothstep(DR + pw, DR - pw, dd);
-    float on = step(di + 0.5, uLit);
+    float on = step(mix(di, uDots - 1.0 - di, uDotsRev) + 0.5, uLit);
     float side = dot(dv, SUN2) / DR;
     vec3 pitLightCol = mix(gLight, toLin(vec3(0.56, 0.58, 0.72)), 0.5) * (0.9 - 0.42 * side) * (0.55 + 0.45 * sh);
     pitLightCol += gInk * 0.5 * sh * sh * smoothstep(0.55, 0.0, length(dv + SUN2 * DR * 0.4) / DR);
@@ -536,6 +538,7 @@ export function GlowRocker({
   bottomLabel = 'SU',
   font = '"Barlow Condensed", "Barlow", ui-sans-serif, system-ui, sans-serif',
   dots = 19,
+  dotsFromTop = false,
   duration = 720,
   orbit = 4,
   ariaLabel = 'Glow rocker',
@@ -562,6 +565,7 @@ export function GlowRocker({
     labels: [offLabel, onLabel, topLabel, bottomLabel],
     font,
     dots: Math.max(2, Math.min(60, Math.round(dots))),
+    dotsFromTop,
     duration: Math.max(60, duration),
     orbit,
   }
@@ -623,6 +627,7 @@ export function GlowRocker({
           'uBloom',
           'uLit',
           'uDots',
+          'uDotsRev',
           'uGlow',
           'uLight',
           'uShade',
@@ -833,6 +838,7 @@ export function GlowRocker({
         gl.uniform1f(U.uBloom, bloom)
         gl.uniform1f(U.uLit, lit)
         gl.uniform1f(U.uDots, p.dots)
+        gl.uniform1f(U.uDotsRev, p.dotsFromTop ? 1 : 0)
         gl.uniform3f(U.uGlow, cGlow[0], cGlow[1], cGlow[2])
         gl.uniform3f(U.uLight, cLight[0], cLight[1], cLight[2])
         gl.uniform3f(U.uShade, cDark[0], cDark[1], cDark[2])
@@ -859,6 +865,7 @@ export function GlowRocker({
           cLight,
           cDark,
           cInk,
+          p.dotsFromTop,
         )
       }
     }
@@ -1059,7 +1066,7 @@ function css(c, alpha = 1) {
  * (leaning wall quads, two tilting plates), canvas blur stands in for the soft
  * shadow and the halo, and the labels are drawn as text in perspective.
  */
-function paint2d(x, w, h, scale, cam, pose, dark, bloom, lit, dots, labels, font, glow, light, shade, ink) {
+function paint2d(x, w, h, scale, cam, pose, dark, bloom, lit, dots, labels, font, glow, light, shade, ink, dotsFromTop) {
   const gGlow = lin3(glow)
   const gInk = lin3(ink)
   const gLight = mul3(lin3(light), mix(cam.gain, 1, dark))
@@ -1194,7 +1201,7 @@ function paint2d(x, w, h, scale, cam, pose, dark, bloom, lit, dots, labels, font
     const p0 = proj(DOT_X, cy, 0)
     const pu = proj(DOT_X + 0.1, cy, 0)
     const pv = proj(DOT_X, cy + 0.1, 0)
-    const on = i + 0.5 < lit
+    const on = (dotsFromTop ? dots - 1 - i : i) + 0.5 < lit
     x.setTransform((pu[0] - p0[0]) * 10, (pu[1] - p0[1]) * 10, (pv[0] - p0[0]) * 10, (pv[1] - p0[1]) * 10, p0[0], p0[1])
     x.beginPath()
     x.arc(0, 0, DOT_R, 0, Math.PI * 2)
