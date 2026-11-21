@@ -366,8 +366,9 @@ export default function HangPage() {
                 ariaLabel="Phones-down mode"
                 offLabel="UP"
                 onLabel="DOWN"
-                bottomLabel="x1"
-                topLabel="x1.5"
+                bottomLabel="x1.5"
+                topLabel="x1"
+                dotsFromTop
                 glowColor="#bef264"
                 labelColor="#bef264"
                 lightColor={dark ? '#17253e' : '#dfe6ef'}
