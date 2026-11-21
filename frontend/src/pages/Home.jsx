@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import AnimatedNumber from '../components/AnimatedNumber'
 import FriendOrFoe from '../components/FriendOrFoe'
+import LiquidText from '../components/LiquidText'
 import { LogoMark } from '../components/Logo'
 import TeamRequests from '../components/TeamRequests'
 import { Avatar, Button, Card, ErrorText, Page, Rise, SectionTitle } from '../components/ui'
@@ -131,7 +132,7 @@ export default function Home() {
               <HeroStat icon={<Hexagon className="size-6 text-sky-300" aria-hidden />} value={zones} label="team zones" />
             </div>
             <h2 className="mt-6 font-display text-[44px] font-extrabold uppercase leading-[0.9] tracking-tight">
-              Go <span className="text-lime">outside.</span>
+              Go <LiquidText fill={0.74} delay={500}>outside.</LiquidText>
             </h2>
             <p className="mt-2 text-[15px] text-white/75">Phones down with friends. More people, more points.</p>
             <div className="mt-5 grid grid-cols-2 gap-2.5">
