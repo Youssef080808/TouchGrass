@@ -23,7 +23,8 @@ TIMEZONE = os.getenv("TIMEZONE") or "America/Montreal"
 
 # Game rules
 JOIN_RADIUS_M = _float("JOIN_RADIUS_M", 100)                      # must be this close to the host to join
-SOLO_MIN_DISTANCE_FROM_HOME_M = _float("SOLO_MIN_DISTANCE_FROM_HOME_M", 300)
+# Within this of your home counts as being home: Hang time stops there and solo sessions can't start there.
+HOME_RADIUS_M = _float("HOME_RADIUS_M", 100)
 POINTS_TIME_SCALE = _float("POINTS_TIME_SCALE", 1)                # demo speed-up (60 = 1 s counts as 1 min)
 DAILY_POINTS_CAP = _int("DAILY_POINTS_CAP", 300)
 HEX_RESOLUTION = _int("HEX_RESOLUTION", 9)                        # H3 res 9 = hexes about 350 m across

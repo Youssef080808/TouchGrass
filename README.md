@@ -107,10 +107,11 @@ Open that link on your phones. Everything (app + API + live updates) goes throug
   switching apps or locking it pauses the bonus (heartbeats stop, so the server stops counting).
   See `frontend/src/hooks/usePhoneDown.js` and `backend/app/routers/hangs.py`.
   A native app would read real screen-time data instead, with no black screen needed.
-- **Anti-cheat:** you must be within 100 m of the host to join; while the app is open it checks your location
-  every 30 s and walking 300 m+ away counts as leaving; checking out or ending far from the Hang stops your time at
-  the last moment you were confirmed there; the host must be at the Hang to end it; solo sessions only count
-  300 m+ from your (rounded, private) home or at a suggested place.
+- **Anti-cheat:** you must be within 100 m of the host to join. After that the group can move around together:
+  your time only stops if you go home (within 100 m of your rounded, private home, unless the Hang is there).
+  While the app is open it checks your location every 30 s; checking out from home stops your time at the last
+  moment you were confirmed out; the host can't end the Hang from home; solo sessions only count 100 m+ from
+  home or at a suggested place.
 - **Territory:** the map uses Uber's H3 hexagons (about 350 m across). Each Hang adds each member's points to
   their team in that hexagon. Scores fade 10% a day, so zones must be defended. Most points owns it; within 20% is
   "contested". See `backend/app/territory.py`.

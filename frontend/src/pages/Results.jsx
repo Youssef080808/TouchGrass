@@ -65,7 +65,7 @@ export default function Results({ hang, me }) {
             </div>
             {b.left_area && (
               <p className="mt-3 flex items-center gap-2 rounded-2xl bg-danger-soft px-3 py-2 text-sm text-danger">
-                <MapPinOff className="size-4 shrink-0" aria-hidden /> You left the Hang area, so your time stopped when you left.
+                <MapPinOff className="size-4 shrink-0" aria-hidden /> You went home, so your time stopped when you left.
               </p>
             )}
             {b.capped && <p className="mt-3 text-sm text-muted">You hit today's points limit. Come back tomorrow!</p>}

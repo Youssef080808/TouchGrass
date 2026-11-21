@@ -78,9 +78,9 @@ class HangMember(Base):
     hang_id: Mapped[int] = mapped_column(ForeignKey("hangs.id"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     joined_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
-    # When their time stopped counting before the Hang ended: checked out, or walked away.
+    # When their time stopped counting before the Hang ended: checked out, or went home.
     left_at: Mapped[datetime | None] = mapped_column(DateTime)
-    left_reason: Mapped[str | None] = mapped_column(String(20))          # checked_out, left_area
+    left_reason: Mapped[str | None] = mapped_column(String(20))          # checked_out, left_area (went home)
     # Last time their location was confirmed at the Hang (join, an in-range ping, check-out).
     last_verified_at: Mapped[datetime | None] = mapped_column(DateTime)
     # Optional phones-down bonus: time spent with the app open on the black screen, phone face-down.

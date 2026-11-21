@@ -2,9 +2,12 @@
 
 How time is verified (people can lock their phones and put them away):
 - Check-in: you must be within JOIN_RADIUS_M of the host to join (location checked).
-- While the app is open it sends your location every 30 s; walking away counts as leaving.
-- Check-out / end: your location is checked again. If you're far away, your time stops at the
-  last moment you were confirmed at the Hang.
+- After that the group can move around together. Your time only stops if you go home
+  (within HOME_RADIUS_M of your home), unless the Hang itself is there.
+- While the app is open it sends your location every 30 s; being home counts as leaving.
+- Check-out: your location is checked again. If you're home, your time stops at the last
+  moment you were confirmed out.
+- End: the host can end it anywhere except from home.
 - Phones-down bonus (optional): the app sends a heartbeat every 15 s while it's open on the black
   screen. If the phone is locked or the app closed, heartbeats stop and the bonus stops growing.
 
@@ -25,7 +28,7 @@ from sqlalchemy.orm import Session
 
 from .. import territory
 from ..auth import current_user
-from ..config import DAILY_POINTS_CAP, JOIN_RADIUS_M, SOLO_MIN_DISTANCE_FROM_HOME_M
+from ..config import DAILY_POINTS_CAP, HOME_RADIUS_M, JOIN_RADIUS_M
 from ..db import SessionLocal, get_db
 from ..geo import distance_m, hex_for
 from ..models import Hang, HangMember, HexScore, User
@@ -91,6 +94,19 @@ def _at_hang(hang: Hang, loc: Location) -> bool:
     return distance_m(hang.lat, hang.lng, loc.lat, loc.lng) <= STAY_RADIUS_FACTOR * JOIN_RADIUS_M
 
 
+def _near_home(user: User, loc: Location, radius_m: float = HOME_RADIUS_M) -> bool:
+    """Within radius_m of the user's (rounded) home. False if no home is set."""
+    if user.home_lat is None or user.home_lng is None:
+        return False
+    return distance_m(user.home_lat, user.home_lng, loc.lat, loc.lng) < radius_m
+
+
+def _still_out(hang: Hang, user: User, loc: Location) -> bool:
+    """Still counts as hanging out: anywhere but home (the group can move around together).
+    Being at the Hang's own spot always counts, even if that's near your home."""
+    return _at_hang(hang, loc) or not _near_home(user, loc)
+
+
 def _close_phones_down(m: HangMember, at: datetime) -> None:
     """End the current phones-down stretch, counting it only up to the last heartbeat (+20 s)."""
     if m.phones_down_since is None:
@@ -103,7 +119,7 @@ def _close_phones_down(m: HangMember, at: datetime) -> None:
 
 
 def _stop_time(m: HangMember, loc_ok: bool, now: datetime) -> tuple[datetime, str]:
-    """When this person's time stops: now if they're still at the Hang, else their last confirmed moment."""
+    """When this person's time stops: now if they're still out, else (they're home) their last confirmed moment."""
     if loc_ok:
         m.last_verified_at = now
         return now, "checked_out"
@@ -122,11 +138,10 @@ def start_hang(body: StartHang, user: User = Depends(current_user), db: Session 
     if existing:
         raise HTTPException(409, f"You're already in a Hang (code {existing.hang.code})")
     # Anti-cheat for solo: it only counts away from home (or at a suggested place).
-    if body.kind == "solo" and user.home_lat is not None and not body.place_name:
-        if distance_m(user.home_lat, user.home_lng, body.lat, body.lng) < SOLO_MIN_DISTANCE_FROM_HOME_M:
-            raise HTTPException(
-                400, f"Solo sessions count when you're at least {SOLO_MIN_DISTANCE_FROM_HOME_M:.0f} m "
-                     "from home, or at a suggested place. Go touch some grass!")
+    if body.kind == "solo" and not body.place_name and _near_home(user, body):
+        raise HTTPException(
+            400, f"Solo sessions count when you're at least {HOME_RADIUS_M:.0f} m "
+                 "from home, or at a suggested place. Go touch some grass!")
     weather = current_weather(body.lat, body.lng)
     now = utcnow()
     hang = Hang(
@@ -171,12 +186,12 @@ def get_hang(hang_id: int, user: User = Depends(current_user), db: Session = Dep
 
 @router.post("/hangs/{hang_id}/ping")
 def ping(hang_id: int, body: Location, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    """The app sends its location every 30 s while it's open. Walking away counts as leaving."""
+    """The app sends its location every 30 s while it's open. Being home counts as leaving."""
     hang = _get_hang(db, hang_id)
     m = _member(hang, user)
     if hang.status == "active" and m.left_at is None:
         now = utcnow()
-        if _at_hang(hang, body):
+        if _still_out(hang, user, body):
             m.last_verified_at = now
         else:
             _close_phones_down(m, now)
@@ -214,7 +229,7 @@ def checkout(hang_id: int, body: Location, user: User = Depends(current_user), d
     m = _member(hang, user)
     if hang.status == "active" and m.left_at is None:
         now = utcnow()
-        stop, reason = _stop_time(m, _at_hang(hang, body), now)
+        stop, reason = _stop_time(m, _still_out(hang, user, body), now)
         _close_phones_down(m, stop)
         m.left_at, m.left_reason = stop, reason
         db.commit()
@@ -229,9 +244,9 @@ def end_hang(hang_id: int, body: Location, user: User = Depends(current_user), d
         raise HTTPException(403, "Only the host can end the Hang")
     if hang.status != "active":
         raise HTTPException(409, "This Hang already ended")
-    if not _at_hang(hang, body):
-        d = distance_m(hang.lat, hang.lng, body.lat, body.lng)
-        raise HTTPException(400, f"You're {d:.0f} m from the Hang. End it from where you hung out.")
+    # The group may have moved on together, so ending works anywhere you're still out, just not from home.
+    if not _still_out(hang, user, body):
+        raise HTTPException(400, "You're at home, so you can't end the Hang from here. End it while you're still out.")
 
     now = utcnow()
     hang.status, hang.ended_at = "ended", now

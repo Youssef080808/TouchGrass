@@ -65,7 +65,7 @@ export default function HangPage() {
     return () => clearInterval(t)
   }, [])
 
-  // While the app is open, send location every 30 s (walking away counts as leaving)
+  // While the app is open, send location every 30 s (going home counts as leaving)
   useEffect(() => {
     if (!active || !stillHere) return undefined
     const send = () =>
@@ -230,7 +230,7 @@ export default function HangPage() {
           {me.left_at ? (
             <Card className="text-[15px] shadow-lg shadow-black/5">
               <p className="font-semibold">
-                {me.left_reason === 'checked_out' ? "You're checked out." : 'You left the Hang area, so your time stopped.'}
+                {me.left_reason === 'checked_out' ? "You're checked out." : 'You went home, so your time stopped.'}
               </p>
               <p className="mt-1 text-muted">You'll get your points when {hostName} ends the Hang.</p>
               <Button variant="secondary" className="mt-3 w-full" onClick={() => navigate('/')}>

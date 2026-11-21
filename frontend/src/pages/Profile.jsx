@@ -230,7 +230,7 @@ export default function Profile() {
           <Card>
             <SectionTitle>Home spot</SectionTitle>
             <p className="text-sm text-muted">
-              {user.has_home ? 'Set. Solo sessions count once you are 300 m+ away.' : 'Not set.'} Rounded, never shown.
+              {user.has_home ? "Set. Solo sessions count once you're 100 m+ away, and Hang time stops when you're back." : 'Not set.'} Rounded, never shown.
             </p>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <Button variant="secondary" className="h-11" onClick={setHome}>
