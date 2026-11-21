@@ -1,4 +1,4 @@
-import { Flag, Map as MapIcon, PhoneOff } from 'lucide-react'
+import { Flag, Map as MapIcon, MapPinOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Avatar, Button, Card, TeamDot } from '../components/ui'
 
@@ -29,16 +29,21 @@ export default function Results({ hang, me }) {
           <Card>
             <h2 className="font-semibold">How you scored</h2>
             <div className="mt-2 divide-y divide-black/5">
-              <Row label="Phone-down minutes" value={b.minutes} />
+              <Row label="Minutes together" value={b.minutes} />
               <Row label="Party bonus" value={`x${b.party_multiplier}`} highlight={b.party_multiplier > 1} />
+              <Row
+                label={`Phones-down bonus (${Math.round(b.phones_down_share * 100)}% of the time)`}
+                value={`x${b.phones_down_multiplier}`}
+                highlight={b.phones_down_multiplier > 1}
+              />
               <Row label="Streak bonus" value={`x${b.streak_multiplier}`} highlight={b.streak_multiplier > 1} />
               {b.active_multiplier > 1 && <Row label="Active place" value={`x${b.active_multiplier}`} highlight />}
               {b.weather_multiplier > 1 && <Row label="Braved the weather" value={`x${b.weather_multiplier}`} highlight />}
               {b.new_place_bonus > 0 && <Row label="New place" value={`+${b.new_place_bonus}`} highlight />}
             </div>
-            {b.picked_up_phone && (
+            {b.left_area && (
               <p className="mt-3 flex items-center gap-2 rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-700">
-                <PhoneOff className="size-4" /> You picked up your phone, so no party bonus this time.
+                <MapPinOff className="size-4 shrink-0" /> You left the Hang area, so your time stopped when you left.
               </p>
             )}
             {b.capped && <p className="mt-3 text-sm text-slate-500">You hit today's points limit. Come back tomorrow!</p>}

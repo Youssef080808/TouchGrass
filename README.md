@@ -83,19 +83,25 @@ Open that link on your phones. Everything (app + API + live updates) goes throug
 - Set `POINTS_TIME_SCALE=60` so each real second counts as a minute. A 1-minute live Hang then earns real points.
 - The QR code holds a link (`/join/CODE`), so judges scan it with their normal camera, sign up, and land in your Hang.
 - Players must be within 100 m to join (`JOIN_RADIUS_M`). Make it bigger if the demo room's GPS is poor.
-- `python seed.py --reset` wipes everything and reloads the sample data before you present.
+- `python seed.py --reset` wipes everything and reloads the sample data before you present. Also run it after
+  pulling changes that add database columns (SQLite doesn't update existing tables).
 
 ## How it works (for the judges' Q&A)
 
-- **Points:** phone-down minutes × party bonus (+0.5 per teammate, +0.3 per other player, max 3×) × streak bonus
-  (+10% per day, max +50%) × active place (+20%) × bad weather (+20%), plus 25 for a new place. Daily cap 300.
-  See `backend/app/points.py`.
-- **Phone-down check:** a website can't see other apps, so during phones-down mode the page keeps the screen awake
-  and black, and counts it as picking up if the page is hidden (switched app, locked screen) or the phone turns
-  face-up for 3+ seconds. Picking up stops your time and removes your party bonus.
-  See `frontend/src/hooks/usePhoneDown.js`.
-- **Anti-cheat:** you must be within 100 m of the host to join; walking away during a Hang counts as leaving;
-  solo sessions only count 300 m+ from your (rounded, private) home or at a suggested place.
+- **Points:** minutes together × party bonus (+0.5 per teammate, +0.3 per other player, max 3×) × phones-down
+  bonus (up to 1.5×) × streak bonus (+10% per day, max +50%) × active place (+20%) × bad weather (+20%), plus 25
+  for a new place. Daily cap 300. See `backend/app/points.py`.
+- **Locking your phone is fine:** your time counts from check-in to check-out (or until the host ends the Hang).
+  A website stops running when the phone locks, so time is verified with location at check-in and check-out.
+- **Phones-down bonus (optional):** keep the app open on the black screen with the phone face-down. The app sends
+  a heartbeat every 15 s; the bonus grows with the share of your time spent this way. Picking the phone up,
+  switching apps or locking it pauses the bonus (heartbeats stop, so the server stops counting).
+  See `frontend/src/hooks/usePhoneDown.js` and `backend/app/routers/hangs.py`.
+  A native app would read real screen-time data instead, with no black screen needed.
+- **Anti-cheat:** you must be within 100 m of the host to join; while the app is open it checks your location
+  every 30 s and walking 300 m+ away counts as leaving; checking out or ending far from the Hang stops your time at
+  the last moment you were confirmed there; the host must be at the Hang to end it; solo sessions only count
+  300 m+ from your (rounded, private) home or at a suggested place.
 - **Territory:** the map uses Uber's H3 hexagons (about 350 m across). Each Hang adds each member's points to
   their team in that hexagon. Scores fade 10% a day, so zones must be defended. Most points owns it; within 20% is
   "contested". See `backend/app/territory.py`.
@@ -111,6 +117,5 @@ Open that link on your phones. Everything (app + API + live updates) goes throug
 
 - "Team up" button: start a joint Hang with the rival team and split the zone (now it just starts a Hang).
 - Photo check with an AI vision model as extra proof you're outside.
-- Only count time spent in phones-down mode, not the whole Hang.
 - Friends list and matching with nearby people who share interests.
 - Native app version: real screen-time and pickup data, app blocking, push notifications.

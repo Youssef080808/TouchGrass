@@ -1,4 +1,4 @@
-import { ArrowLeft, CloudRain, Crown, Footprints, MapPin, Smartphone, Sparkles, Users } from 'lucide-react'
+import { ArrowLeft, CloudRain, Crown, Footprints, Lock, MapPin, Smartphone, Sparkles, Users } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -12,7 +12,40 @@ import { getPosition } from '../lib/location'
 import { useUser } from '../user'
 import Results from './Results'
 
-const PING_EVERY_MS = 30000
+const PING_EVERY_MS = 30000      // location check while the app is open
+const HEARTBEAT_EVERY_MS = 15000 // "still in phones-down mode" signal
+const PHONES_DOWN_MAX_BONUS = 0.5 // same as backend/app/points.py
+
+const PAUSE_MESSAGES = {
+  picked_up: 'You picked up your phone, so the phones-down bonus paused.',
+  left_app: 'You left the app, so the phones-down bonus paused.',
+  exit: null,
+}
+
+/** Live bonus estimate: share of your time spent in phones-down mode. */
+function phonesDownBonus(member) {
+  const end = member.left_at ? new Date(member.left_at).getTime() : Date.now()
+  const total = (end - new Date(member.joined_at).getTime()) / 1000
+  let down = member.phones_down_seconds
+  if (member.phones_down_active && member.phones_down_since) {
+    down += (Date.now() - new Date(member.phones_down_since).getTime()) / 1000
+  }
+  const share = total > 0 ? Math.min(down / total, 1) : 0
+  return 1 + PHONES_DOWN_MAX_BONUS * share
+}
+
+function MemberStatus({ m }) {
+  if (m.left_reason === 'checked_out') {
+    return <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">Checked out</span>
+  }
+  if (m.left_reason === 'left_area') {
+    return <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600">Left</span>
+  }
+  if (m.phones_down_active) {
+    return <span className="rounded-full bg-lime/60 px-2.5 py-1 text-xs font-semibold text-forest">Phones down</span>
+  }
+  return <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">Here</span>
+}
 
 export default function HangPage() {
   const { id } = useParams()
@@ -20,6 +53,7 @@ export default function HangPage() {
   const { user, refresh: refreshUser } = useUser()
   const { hang, setHang, error } = useHang(id)
   const [phonesDown, setPhonesDown] = useState(false)
+  const [pauseNote, setPauseNote] = useState(null)
   const [busy, setBusy] = useState(null)
   const [actionError, setActionError] = useState(null)
   const [, tick] = useState(0)
@@ -28,6 +62,7 @@ export default function HangPage() {
   const me = hang?.members.find((m) => m.user_id === user.id)
   const isHost = hang?.host_id === user.id
   const active = hang?.status === 'active'
+  const stillHere = Boolean(me && !me.left_at)
 
   // Clock tick for the timer
   useEffect(() => {
@@ -35,16 +70,24 @@ export default function HangPage() {
     return () => clearInterval(t)
   }, [])
 
-  // Send location every 30 s while the Hang is live (walking away counts as leaving)
+  // While the app is open, send location every 30 s (walking away counts as leaving)
   useEffect(() => {
-    if (!active || !me) return undefined
+    if (!active || !stillHere) return undefined
     const send = () =>
       getPosition()
         .then((pos) => api(`/hangs/${id}/ping`, { method: 'POST', body: pos }))
         .catch(() => {})
     const t = setInterval(send, PING_EVERY_MS)
     return () => clearInterval(t)
-  }, [active, me, id])
+  }, [active, stillHere, id])
+
+  // Phones-down heartbeat: if the phone locks, these stop and the bonus stops growing
+  useEffect(() => {
+    if (!phonesDown) return undefined
+    const beat = () => api(`/hangs/${id}/phones-down`, { method: 'POST', body: { active: true } }).then(setHang).catch(() => {})
+    const t = setInterval(beat, HEARTBEAT_EVERY_MS)
+    return () => clearInterval(t)
+  }, [phonesDown, id, setHang])
 
   // When the Hang ends: leave phones-down mode, buzz the phone, refresh points
   useEffect(() => {
@@ -56,32 +99,37 @@ export default function HangPage() {
     }
   }, [active, hang?.status, refreshUser])
 
-  const sendBreak = useCallback(
+  const startPhonesDown = async () => {
+    setPauseNote(null)
+    setActionError(null)
+    await askMotionPermission()
+    try {
+      setHang(await api(`/hangs/${id}/phones-down`, { method: 'POST', body: { active: true } }))
+      setPhonesDown(true)
+    } catch (e) {
+      setActionError(e.message)
+    }
+  }
+
+  const stopPhonesDown = useCallback(
     async (reason) => {
+      setPhonesDown(false)
+      setPauseNote(PAUSE_MESSAGES[reason] ?? null)
       try {
-        setHang(await api(`/hangs/${id}/break`, { method: 'POST', body: { reason } }))
+        setHang(await api(`/hangs/${id}/phones-down`, { method: 'POST', body: { active: false } }))
       } catch {
-        // offline: the server will still see missed pings
+        // offline or phone locked: the server stops the bonus when heartbeats stop
       }
     },
     [id, setHang],
   )
 
-  const enterPhonesDown = async () => {
-    await askMotionPermission()
-    setPhonesDown(true)
-  }
-
-  const exitPhonesDown = async () => {
-    setPhonesDown(false)
-    await sendBreak('picked_up')
-  }
-
   const endHang = async () => {
     setBusy('end')
     setActionError(null)
     try {
-      setHang(await api(`/hangs/${id}/end`, { method: 'POST' }))
+      const pos = await getPosition()
+      setHang(await api(`/hangs/${id}/end`, { method: 'POST', body: pos }))
       refreshUser()
     } catch (e) {
       setActionError(e.message)
@@ -91,13 +139,16 @@ export default function HangPage() {
     }
   }
 
-  const leave = async () => {
-    setBusy('leave')
+  const checkOut = async () => {
+    setBusy('checkout')
+    setActionError(null)
     try {
-      await api(`/hangs/${id}/leave`, { method: 'POST' })
-      navigate('/', { replace: true })
+      const pos = await getPosition()
+      setHang(await api(`/hangs/${id}/checkout`, { method: 'POST', body: pos }))
+      setPhonesDown(false)
     } catch (e) {
       setActionError(e.message)
+    } finally {
       setBusy(null)
     }
   }
@@ -124,11 +175,15 @@ export default function HangPage() {
   const joinUrl = `${window.location.origin}/join/${hang.code}`
   const title = hang.place_name || (hang.kind === 'solo' ? 'Solo session' : 'Group Hang')
   const others = hang.members.filter((m) => m.user_id !== user.id)
+  const hostName = hang.members.find((m) => m.user_id === hang.host_id)?.name ?? 'the host'
+  const together = (me.left_at ? new Date(me.left_at).getTime() : Date.now()) - new Date(me.joined_at).getTime()
+  const bonus = phonesDownBonus(me)
+  const here = hang.members.filter((m) => !m.left_at).length
 
   return (
     <div className="min-h-dvh bg-canvas pb-10">
       {phonesDown && (
-        <PhoneDownOverlay hang={hang} me={me} isHost={isHost} onBreak={sendBreak} onExit={exitPhonesDown} onEnd={endHang} />
+        <PhoneDownOverlay hang={hang} me={me} isHost={isHost} bonus={bonus} onStop={stopPhonesDown} onEnd={endHang} />
       )}
 
       <header className="pt-safe bg-forest px-5 pb-8 text-white">
@@ -137,19 +192,20 @@ export default function HangPage() {
             <ArrowLeft className="size-5" />
           </button>
           <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider">
-            {hang.kind === 'solo' ? 'Solo' : `${hang.members.length} here`} · live
+            {hang.kind === 'solo' ? 'Solo' : `${here} here`} · live
           </span>
         </div>
         <h1 className="mt-3 flex items-center gap-2 text-2xl font-bold">
           {hang.kind === 'solo' ? <Footprints className="size-6" /> : <MapPin className="size-6" />} {title}
         </h1>
-        <p className="mt-6 text-center text-sm text-white/60">{me.broke_at ? 'Phone-down time (stopped)' : 'Phone-down time'}</p>
-        <p className="text-center font-mono text-6xl font-light tabular-nums">
-          {formatDuration((me.broke_at ? new Date(me.broke_at).getTime() : Date.now()) - new Date(me.joined_at).getTime())}
-        </p>
+        <p className="mt-6 text-center text-sm text-white/60">{me.left_at ? 'Your time (stopped)' : 'Time together'}</p>
+        <p className="text-center font-mono text-6xl font-light tabular-nums">{formatDuration(together)}</p>
         <div className="mt-4 flex flex-wrap justify-center gap-2 text-sm">
           <span className="inline-flex items-center gap-1 rounded-full bg-lime px-3 py-1 font-semibold text-forest">
-            <Users className="size-4" /> Party bonus x{me.party_multiplier}
+            <Users className="size-4" /> Party x{me.party_multiplier}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1 font-semibold">
+            <Smartphone className="size-4 rotate-180" /> Phones-down x{bonus.toFixed(2)}
           </span>
           {hang.bad_weather && (
             <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1">
@@ -160,11 +216,33 @@ export default function HangPage() {
       </header>
 
       <div className="-mt-4 space-y-4 px-4">
-        {me.broke_at && (
-          <ErrorText>You picked up your phone, so your phone-down time stopped and you lost the party bonus.</ErrorText>
+        {me.left_at ? (
+          <Card className="text-[15px]">
+            <p className="font-semibold">
+              {me.left_reason === 'checked_out' ? "You're checked out." : 'You left the Hang area, so your time stopped.'}
+            </p>
+            <p className="mt-1 text-slate-500">You'll get your points when {hostName} ends the Hang.</p>
+            <Button variant="secondary" className="mt-3 h-10 w-full" onClick={() => navigate('/')}>
+              Home
+            </Button>
+          </Card>
+        ) : (
+          <Card className="flex items-start gap-3">
+            <div className="rounded-2xl bg-canvas p-2.5">
+              <Lock className="size-5 text-forest" />
+            </div>
+            <p className="text-[15px] text-slate-600">
+              <span className="font-semibold text-slate-900">Lock your phone and put it away.</span> Your time keeps
+              counting until you check out{isHost ? ' or end the Hang' : ` or ${hostName} ends the Hang`}.
+            </p>
+          </Card>
         )}
 
-        {hang.kind === 'group' && (
+        {pauseNote && (
+          <p className="rounded-2xl bg-amber-50 px-3 py-2 text-sm text-amber-800">{pauseNote} Your time together still counts.</p>
+        )}
+
+        {hang.kind === 'group' && stillHere && (
           <Card className="flex items-center gap-4">
             <div className="rounded-2xl bg-white p-1 ring-1 ring-black/5">
               <QRCodeSVG value={joinUrl} size={112} fgColor="#0d3b23" />
@@ -193,13 +271,7 @@ export default function HangPage() {
                     <TeamDot color={m.team?.color} className="size-2" /> {m.team?.name}
                   </p>
                 </div>
-                {m.broke_at ? (
-                  <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600">Picked up</span>
-                ) : (
-                  <span className="rounded-full bg-lime/60 px-2.5 py-1 text-xs font-semibold text-forest">
-                    x{m.party_multiplier}
-                  </span>
-                )}
+                <MemberStatus m={m} />
               </li>
             ))}
           </ul>
@@ -210,25 +282,33 @@ export default function HangPage() {
 
         <ErrorText>{actionError}</ErrorText>
 
-        {!me.broke_at && (
-          <Button variant="lime" className="h-14 w-full text-lg" onClick={enterPhonesDown}>
-            <Smartphone className="size-5 rotate-180" /> Put phones down
-          </Button>
+        {stillHere && (
+          <>
+            <Button variant="lime" className="h-14 w-full text-lg" onClick={startPhonesDown}>
+              <Smartphone className="size-5 rotate-180" /> Phones-down mode · up to x1.5
+            </Button>
+            <p className="-mt-2 text-center text-xs text-slate-400">
+              Optional bonus: keep the app open on a black screen with your phone face-down.
+            </p>
+          </>
         )}
         {isHost ? (
           <Button variant="secondary" className="w-full" loading={busy === 'end'} onClick={endHang}>
             <Sparkles className="size-5" /> End Hang and collect points
           </Button>
         ) : (
-          <Button variant="danger" className="w-full" loading={busy === 'leave'} onClick={leave}>
-            Leave Hang
-          </Button>
+          stillHere && (
+            <Button variant="danger" className="w-full" loading={busy === 'checkout'} onClick={checkOut}>
+              Check out
+            </Button>
+          )
         )}
         <p className="text-center text-xs text-slate-400">
-          {isHost ? 'Everyone gets their points when you end the Hang.' : 'You get your points when the host ends the Hang.'}
+          {isHost
+            ? 'Ending checks your location, then everyone gets their points.'
+            : 'Checking out checks your location. Points arrive when the host ends the Hang.'}
         </p>
       </div>
     </div>
   )
 }
-
