@@ -94,6 +94,20 @@ def update_me(body: ProfileUpdate, user: User = Depends(current_user), db: Sessi
     return user_out(user)
 
 
+@router.get("/me/team")
+def my_team(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Your team and everyone on it, most points first."""
+    if user.team is None:
+        return {"team": None, "members": []}
+    members = db.scalars(
+        select(User).where(User.team_id == user.team_id).order_by(User.points.desc(), User.name)
+    )
+    return {
+        "team": team_out(user.team),
+        "members": [{"id": u.id, "name": u.name, "points": u.points, "streak": u.streak} for u in members],
+    }
+
+
 @router.get("/me/notifications")
 def my_notifications(user: User = Depends(current_user), db: Session = Depends(get_db)):
     rows = db.scalars(

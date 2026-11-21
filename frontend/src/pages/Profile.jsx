@@ -1,4 +1,4 @@
-import { Flame, LogOut, MapPin, Monitor, Moon, Sparkles, Sun } from 'lucide-react'
+import { Flame, LogOut, MapPin, Monitor, Moon, Sparkles, Sun, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { Avatar, Button, Card, ErrorText, Page, TeamDot } from '../components/ui'
@@ -10,6 +10,7 @@ export default function Profile() {
   const { user, setUser, signOut } = useUser()
   const theme = useTheme()
   const [allInterests, setAllInterests] = useState([])
+  const [myTeam, setMyTeam] = useState(null)
   const [interests, setInterests] = useState(user.interests)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
@@ -24,6 +25,7 @@ export default function Profile() {
 
   useEffect(() => {
     api('/interests').then(setAllInterests).catch(() => {})
+    api('/me/team').then(setMyTeam).catch(() => {})
   }, [])
 
   const save = async (body, done) => {
@@ -109,6 +111,39 @@ export default function Profile() {
       </div>
 
       <div className="space-y-4">
+        {myTeam?.team && (
+          <Card>
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 font-semibold">
+                <TeamDot color={myTeam.team.color} /> Your team · {myTeam.team.name}
+              </h2>
+              <span className="flex items-center gap-1 text-sm text-muted">
+                <Users className="size-4" /> {myTeam.members.length}
+              </span>
+            </div>
+            <div className="-mx-2 mt-2">
+              {myTeam.members.map((m) => (
+                <div key={m.id} className={`flex items-center gap-3 rounded-2xl p-2 ${m.id === user.id ? 'bg-lime/30' : ''}`}>
+                  <Avatar name={m.name} color={myTeam.team.color} size={36} />
+                  <span className="flex-1 truncate font-semibold">
+                    {m.name}
+                    {m.id === user.id && <span className="ml-1.5 text-sm font-normal text-muted">(you)</span>}
+                  </span>
+                  {m.streak > 0 && (
+                    <span className="flex items-center gap-0.5 text-sm text-orange-500">
+                      <Flame className="size-4" /> {m.streak}
+                    </span>
+                  )}
+                  <span className="w-16 text-right text-sm font-semibold">{m.points} pts</span>
+                </div>
+              ))}
+            </div>
+            {myTeam.members.length === 1 && (
+              <p className="mt-2 text-sm text-muted">Just you so far. Friends can pick {myTeam.team.name} when they sign up.</p>
+            )}
+          </Card>
+        )}
+
         <Card>
           <h2 className="font-semibold">Appearance</h2>
           <div className="mt-3 grid grid-cols-3 rounded-2xl bg-chip p-1">

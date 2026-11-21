@@ -29,7 +29,7 @@ export default function Home() {
   const [suggest, setSuggest] = useState(null)
   const [suggestError, setSuggestError] = useState(null)
   const [busy, setBusy] = useState(null)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState(null) // { place, message }: place is set when a place card was tapped
   const [code, setCode] = useState('')
 
   const loadSuggestions = useCallback(async () => {
@@ -58,7 +58,7 @@ export default function Home() {
       })
       navigate(`/hang/${hang.id}`)
     } catch (e) {
-      setError(e.message)
+      setError({ place: place?.name ?? null, message: e.message })
       setBusy(null)
     }
   }
@@ -126,7 +126,7 @@ export default function Home() {
           </div>
         </div>
 
-        <ErrorText>{error}</ErrorText>
+        <ErrorText>{error && !error.place && error.message}</ErrorText>
 
         <Card>
           <form onSubmit={join} className="flex items-center gap-2">
@@ -197,6 +197,11 @@ export default function Home() {
                     I'm here, start
                   </Button>
                 </div>
+                {error?.place === p.name && (
+                  <div className="mt-3">
+                    <ErrorText>{error.message}</ErrorText>
+                  </div>
+                )}
               </Card>
             ))}
           </div>

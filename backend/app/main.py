@@ -6,6 +6,7 @@ API docs:     http://localhost:8000/docs
 Everything lives under /api. If the front end has been built (frontend/dist), FastAPI serves it
 too, so the whole app is one URL: easy to deploy and to open on a phone over HTTPS.
 """
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
@@ -13,14 +14,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from .config import CORS_ORIGINS, STATIC_DIR
-from .db import Base, DB_URL, engine
+from .db import Base, DB_URL, add_missing_columns, engine
 from .routers import game, hangs, users
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Creates any missing tables. Fine for a hackathon; use Alembic migrations for a real launch.
+    # Creates any missing tables and columns. Fine for a hackathon; use Alembic migrations for a real launch.
     Base.metadata.create_all(engine)
+    added = add_missing_columns()
+    if added:
+        logging.getLogger("uvicorn.error").info("Added missing database columns: %s", ", ".join(added))
     yield
 
 
