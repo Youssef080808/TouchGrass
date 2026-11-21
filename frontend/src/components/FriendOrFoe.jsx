@@ -61,7 +61,7 @@ export default function FriendOrFoe({ onFight, onTeamUp }) {
               </div>
             </div>
           </Rise>
-        ) : n.kind === 'team_declined' ? (
+        ) : ['team_declined', 'hang_declined', 'hang_removed'].includes(n.kind) ? (
           <Rise key={n.id} i={i}>
             <div className="flex items-center gap-3 rounded-3xl bg-surface p-4 ring-1 ring-line">
               <UserX className="size-5 shrink-0 text-muted" aria-hidden />

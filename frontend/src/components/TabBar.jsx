@@ -1,12 +1,13 @@
 // Adapted from 21st.dev "Bottom Nav Bar" by arunachalam (https://21st.dev/r/arunachalam/bottom-nav-bar).
 // Floating pill tab bar: the active tab shows its label with a spring animation.
-import { House, Map as MapIcon, Trophy, UserRound } from 'lucide-react'
+import { House, Map as MapIcon, Trophy, UserRound, UsersRound } from 'lucide-react'
 import { motion } from 'motion/react'
 import { NavLink } from 'react-router-dom'
 import { cn } from '../lib/cn'
 
 const TABS = [
   { to: '/', label: 'Home', Icon: House },
+  { to: '/meet', label: 'Meet', Icon: UsersRound },
   { to: '/map', label: 'Map', Icon: MapIcon },
   { to: '/ranks', label: 'Ranks', Icon: Trophy },
   { to: '/me', label: 'Me', Icon: UserRound },

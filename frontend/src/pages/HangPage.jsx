@@ -6,8 +6,10 @@ import { api } from '../api'
 import { RollingTimer } from '../components/AnimatedNumber'
 import BonusRing from '../components/BonusRing'
 import GlowRocker from '../components/GlowRocker'
+import { IcebreakerCard, RsvpCard } from '../components/HangPeople'
 import HangTimer from '../components/HangTimer'
 import PhoneDownOverlay from '../components/PhoneDownOverlay'
+import ReportButton from '../components/ReportButton'
 import { Avatar, Button, Card, ErrorText, Rise, SectionTitle, Spinner, TeamDot } from '../components/ui'
 import { useHang } from '../hooks/useHang'
 import { askMotionPermission } from '../hooks/usePhoneDown'
@@ -200,7 +202,7 @@ export default function HangPage() {
     )
   }
 
-  if (hang.status === 'ended') return <Results hang={hang} me={me} />
+  if (hang.status === 'ended') return <Results hang={hang} me={me} onHang={setHang} />
 
   if (!me) {
     return (
@@ -212,7 +214,8 @@ export default function HangPage() {
   }
 
   const joinUrl = `${window.location.origin}/join/${hang.code}`
-  const title = hang.place_name || (hang.kind === 'solo' ? 'Solo session' : 'Group Hang')
+  const title = hang.place_name || hang.activity || (hang.kind === 'solo' ? 'Solo session' : 'Group Hang')
+  const openHang = hang.visibility === 'open'
   const others = hang.members.filter((m) => m.user_id !== user.id)
   const hostName = hang.members.find((m) => m.user_id === hang.host_id)?.name ?? 'the host'
   const together = (me.left_at ? new Date(me.left_at).getTime() : Date.now()) - new Date(me.joined_at).getTime()
@@ -243,6 +246,14 @@ export default function HangPage() {
           {hang.kind === 'solo' ? <Footprints className="size-7 shrink-0" aria-hidden /> : <MapPin className="size-7 shrink-0" aria-hidden />}
           <span className="truncate">{title}</span>
         </h1>
+        {hang.kind === 'group' && (
+          <p className="mt-1 text-sm text-white/65">
+            {openHang ? 'Open to new people' : 'Just friends'}
+            {hang.place_name && hang.activity ? ` · ${hang.activity}` : ''}
+            {hang.max_size ? ` · ${here}/${hang.max_size} people` : ''}
+            {openHang && hang.join_mode === 'approve' ? ' · You approve each person' : ''}
+          </p>
+        )}
 
         <div className="mt-5">
           <BonusRing share={share} size={224} stroke={12}>
@@ -311,6 +322,18 @@ export default function HangPage() {
           </Rise>
         )}
 
+        {openHang && active && (
+          <Rise i={1}>
+            <RsvpCard hang={hang} isHost={isHost} onHang={setHang} />
+          </Rise>
+        )}
+
+        {hang.kind === 'group' && active && stillHere && (
+          <Rise i={1}>
+            <IcebreakerCard hangId={hang.id} peopleKey={hang.members.map((m) => m.user_id).join(',')} />
+          </Rise>
+        )}
+
         {hang.kind === 'group' && stillHere && (
           <Rise i={1}>
             <Card className="flex items-center gap-4">
@@ -320,7 +343,11 @@ export default function HangPage() {
               <div className="min-w-0">
                 <p className="text-sm text-muted">Friends scan with their camera, or enter</p>
                 <p className="mt-1 font-display text-[34px] font-extrabold leading-none tracking-[0.12em] text-brand-ink">{hang.code}</p>
-                <p className="mt-2 text-xs text-faint">They need to be within 100 m of you.</p>
+                <p className="mt-2 text-xs text-faint">
+                  {openHang
+                    ? 'For friends. People from Meet check themselves in when they arrive.'
+                    : 'They need to be within 100 m of you.'}
+                </p>
               </div>
             </Card>
           </Rise>
@@ -343,7 +370,10 @@ export default function HangPage() {
                       <TeamDot color={m.team?.color} className="size-2" /> {m.team?.name}
                     </p>
                   </div>
-                  <MemberStatus m={m} />
+                  <div className="flex flex-col items-end gap-0.5">
+                    <MemberStatus m={m} />
+                    {openHang && m.user_id !== user.id && <ReportButton userId={m.user_id} hangId={hang.id} name={m.name} />}
+                  </div>
                 </li>
               ))}
             </ul>

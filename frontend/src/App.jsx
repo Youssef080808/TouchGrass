@@ -7,8 +7,10 @@ import Home from './pages/Home'
 import JoinPage from './pages/JoinPage'
 import Leaderboard from './pages/Leaderboard'
 import MapPage from './pages/MapPage'
+import Meet from './pages/Meet'
 import Onboarding, { PENDING_JOIN_KEY } from './pages/Onboarding'
 import Profile from './pages/Profile'
+import { useAutoArrive } from './hooks/useAutoArrive'
 import { syncPush } from './lib/push'
 import { useUser } from './user'
 
@@ -45,6 +47,9 @@ export default function App() {
   useEffect(() => {
     if (user?.id) syncPush()
   }, [user?.id])
+
+  // Said "I'm coming" to an open Hang? Check in by itself on arrival (not while already on a Hang screen).
+  useAutoArrive(Boolean(user?.id) && !location.pathname.startsWith('/hang/'))
 
   if (loading) {
     return (
@@ -85,6 +90,7 @@ export default function App() {
       <div key={location.pathname} className={`overflow-x-clip ${pushed ? 'motion-safe:animate-push' : 'motion-safe:animate-page'}`}>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/meet" element={<Meet />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/ranks" element={<Leaderboard />} />
           <Route path="/me" element={<Profile />} />

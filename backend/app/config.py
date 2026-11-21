@@ -31,6 +31,10 @@ MIN_HANG_MINUTES = _float("MIN_HANG_MINUTES", 10)                 # shorter Hang
 # A Hang ends by itself after this long with nobody opening the app (stops forgotten Hangs).
 NO_CHECKIN_END_HOURS = _float("NO_CHECKIN_END_HOURS", 3)
 PLACE_RADIUS_M = _float("PLACE_RADIUS_M", 400)                    # "I'm here" at a place: must be this close to it
+# Meet: open Hangs within this distance show up for you, and players with this many reports (from
+# different people) can't post or join open Hangs any more.
+OPEN_HANG_RADIUS_M = _float("OPEN_HANG_RADIUS_M", 5000)
+REPORTS_TO_BLOCK = _int("REPORTS_TO_BLOCK", 3)
 HEX_RESOLUTION = _int("HEX_RESOLUTION", 9)                        # H3 res 9 = hexes about 350 m across
 TERRITORY_DECAY_PER_DAY = _float("TERRITORY_DECAY_PER_DAY", 0.9)  # territory points keep 90% per day
 

@@ -1,11 +1,63 @@
 import { CloudRain, Dumbbell, Flag, Flame, Handshake, Hexagon, Map as MapIcon, MapPinOff, Shield, Smartphone, Sparkles, Timer, Users } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { api } from '../api'
 import LiquidText from '../components/LiquidText'
 import GlassFold from '../components/GlassFold'
-import { Avatar, Button, Card, Rise, SectionTitle, TeamDot } from '../components/ui'
+import ReportButton from '../components/ReportButton'
+import { Avatar, Button, Card, ErrorText, Rise, SectionTitle, TeamDot } from '../components/ui'
 import { celebrate } from '../lib/confetti'
 import { BUZZ, haptic } from '../lib/haptics'
+
+const REMOVE_WINDOW_MS = 2 * 60 * 60 * 1000 // same as the server: 2 h after the Hang ends
+
+/**
+ * Host only, open Hangs: the people who checked themselves in. If someone wasn't really there, one tap
+ * takes back their points for this Hang (and counts as a report).
+ */
+function NewPeopleCard({ hang, onHang }) {
+  const [busy, setBusy] = useState(null)
+  const [error, setError] = useState(null)
+  const walkIns = hang.members.filter((m) => m.joined_via === 'arrive')
+  const tooLate = hang.ended_at && Date.now() - new Date(hang.ended_at).getTime() > REMOVE_WINDOW_MS
+  if (!walkIns.length || tooLate) return null
+  const remove = async (m) => {
+    if (!window.confirm(`${m.name} wasn't really here? Their points for this Hang will be taken back.`)) return
+    setBusy(m.user_id)
+    setError(null)
+    try {
+      onHang?.(await api(`/hangs/${hang.id}/members/${m.user_id}/remove`, { method: 'POST' }))
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setBusy(null)
+    }
+  }
+  return (
+    <Card>
+      <SectionTitle>New people today</SectionTitle>
+      <ul className="space-y-3">
+        {walkIns.map((m) => (
+          <li key={m.user_id} className="flex items-center gap-3">
+            <Avatar name={m.name} color={m.team?.color} size={36} />
+            <span className="min-w-0 flex-1 truncate font-semibold">{m.name}</span>
+            {m.left_reason === 'removed' ? (
+              <span className="text-sm text-muted">Removed</span>
+            ) : (
+              <>
+                <ReportButton userId={m.user_id} hangId={hang.id} name={m.name} />
+                <Button variant="secondary" className="h-10 px-3 text-sm" loading={busy === m.user_id} onClick={() => remove(m)}>
+                  Wasn't here
+                </Button>
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+      <ErrorText>{error}</ErrorText>
+    </Card>
+  )
+}
 
 /** "Priya", "Priya and Sam", "Priya, Sam and Leah" */
 function listNames(names) {
@@ -42,7 +94,7 @@ export function zoneOutcome(hang, myTeamId) {
 const OUTCOME_ICONS = { captured: Flag, defended: Shield, taken: Hexagon, held: Hexagon }
 
 /** Shown when a Hang has ended: your points breakdown and who holds the zone now. */
-export default function Results({ hang, me }) {
+export default function Results({ hang, me, onHang }) {
   const navigate = useNavigate()
   const b = me?.breakdown
   const points = me?.points_earned ?? 0
@@ -163,6 +215,12 @@ export default function Results({ hang, me }) {
                 <p className={`mt-1 text-[15px] ${zone.kind === 'captured' ? '' : 'text-muted'}`}>{zone.text}</p>
               </div>
             </div>
+          </Rise>
+        )}
+
+        {me?.user_id === hang.host_id && hang.visibility === 'open' && (
+          <Rise i={4}>
+            <NewPeopleCard hang={hang} onHang={onHang} />
           </Rise>
         )}
 

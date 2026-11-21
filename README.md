@@ -98,6 +98,12 @@ Open that link on your phones. Everything (app + API + live updates) goes throug
 - Notifications on a laptop: turn them on in the Me tab, allow your browser in macOS System Settings >
   Notifications, and turn off Focus. For a second player use another Chrome profile, not incognito (incognito
   blocks notifications). With `POINTS_TIME_SCALE=60` a 30-minute Hang timer goes off after 30 seconds.
+- Open Hangs for Meet: `python seed.py --reset` also adds three open Hangs from sample players near McGill
+  (basketball, a study session that needs approval, a run). They end by themselves after 3 hours without
+  check-ins, so run `python seed.py --open` again shortly before presenting.
+- Meet demo with two phones: phone A starts an open Hang; phone B (a few hundred metres away, or with a test
+  location) sees it in Meet, taps "I'm coming", then "I'm here" on arrival (or just waits: with the app open it
+  checks itself in within about 30 seconds of getting within 100 m). Nobody scans anything.
 - `python seed.py --reset` wipes everything and reloads the sample data before you present. Also run it after
   pulling changes that add database columns (SQLite doesn't update existing tables).
 
@@ -127,6 +133,20 @@ Open that link on your phones. Everything (app + API + live updates) goes throug
   - The "pretend I'm somewhere else" testing tools only exist in demo builds (`VITE_DEMO_MODE=true`, always on
     with `npm run dev`). A determined person can still fake GPS with outside tools; a native app could use the
     phone's mock-location detection.
+- **Meet (people first):** a Hang can be open to new people. Open Hangs show up in the Meet tab and on Home for
+  people within 5 km, people who share your interests first. "I'm coming" tells the host (no push, so their game
+  isn't interrupted); for "I approve each person" Hangs the host sees a small profile (interests, Hangs done)
+  and taps yes or no, and the exact spot is only shown once you're accepted. On arrival you check yourself in
+  (the server checks you're within 100 m), so nobody stops to scan a QR code; the QR stays for friends. The
+  host sets the party size, and a full Hang takes no more people. Safety: open Hangs can't start at the host's
+  home, anyone can be reported, reports from 3 different people block someone from open Hangs, and after the
+  game the host can say a walk-in wasn't really there (their points for it are taken back). See
+  `backend/app/routers/meet.py`.
+- **Your people:** the Meet tab lists everyone you've hung out with and your hours together. Research by
+  Jeffrey Hall (2018) found it takes about 50 hours together to become casual friends, 90 to become friends and
+  200 to become close friends, so each person shows a level and progress to the next one. "Hang again" sends
+  them a note. When people meet for the first time, the Hang screen shows an icebreaker question based on
+  what they have in common.
 - **Teams:** you can't just put yourself on a team. Asking to join sends a request to everyone on it, and you're
   in once any one of them accepts (the first answer counts). Empty teams are open. You can leave, or ask to
   switch to another team and move over when they accept. See `backend/app/routers/teams.py`.
