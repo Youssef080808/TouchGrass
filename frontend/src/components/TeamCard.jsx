@@ -13,7 +13,7 @@ import { Avatar, Button, Card, ErrorText, SectionTitle } from './ui'
  */
 export default function TeamCard() {
   const { user } = useUser()
-  const { data, apply } = useMyTeam()
+  const { data, apply, load, error: loadError } = useMyTeam()
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState(null)
   const [note, setNote] = useState(null)
@@ -36,7 +36,18 @@ export default function TeamCard() {
       .catch(() => {})
   }, [showPicker, data?.team?.id])
 
-  if (!data) return null
+  if (!data) {
+    if (!loadError) return null
+    return (
+      <Card>
+        <SectionTitle>Your team</SectionTitle>
+        <ErrorText>Couldn't load your team: {loadError}</ErrorText>
+        <Button variant="secondary" className="mt-3 h-11 w-full" onClick={load}>
+          Try again
+        </Button>
+      </Card>
+    )
+  }
 
   const run = async (key, path, body, done) => {
     setBusy(key)
