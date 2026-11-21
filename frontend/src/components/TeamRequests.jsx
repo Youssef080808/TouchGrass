@@ -36,7 +36,7 @@ export default function TeamRequests() {
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState(null)
 
-  if (!data) return null
+  if (!data || data.outdated) return null
 
   const answer = async (r, accept) => {
     const action = accept ? 'accept' : 'decline'

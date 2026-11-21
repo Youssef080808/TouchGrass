@@ -13,7 +13,7 @@ import { Avatar, Button, Card, ErrorText, SectionTitle } from './ui'
  */
 export default function TeamCard() {
   const { user } = useUser()
-  const { data, apply } = useMyTeam()
+  const { data, error: loadError, apply, load } = useMyTeam()
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState(null)
   const [note, setNote] = useState(null)
@@ -36,7 +36,26 @@ export default function TeamCard() {
       .catch(() => {})
   }, [showPicker, data?.team?.id])
 
-  if (!data) return null
+  // Still loading, couldn't load, or the server is running old code: say so instead of showing nothing.
+  if (!data || data.outdated) {
+    if (!data && !loadError) return <div className="h-28 animate-pulse rounded-3xl bg-surface ring-1 ring-line" aria-label="Loading your team" />
+    return (
+      <Card>
+        <SectionTitle>Your team</SectionTitle>
+        <ErrorText>
+          {data?.outdated
+            ? "The server is running older code, so switching and leaving teams aren't available yet."
+            : `Couldn't load your team: ${loadError}`}
+        </ErrorText>
+        <p className="mt-2 text-sm text-muted">
+          If you just pulled new code, stop the backend and start it again, then tap Try again.
+        </p>
+        <Button variant="secondary" className="mt-3 h-11 w-full" onClick={load}>
+          Try again
+        </Button>
+      </Card>
+    )
+  }
 
   const run = async (key, path, body, done) => {
     setBusy(key)

@@ -65,6 +65,18 @@ npm run dev
 Open http://localhost:5173. On a laptop, go to **Me → Testing tools → Pretend I'm at McGill** so location works.
 To test a group Hang on one computer, open a second browser window in private/incognito mode as another player.
 
+**After `git pull`:** run `npm install` in `frontend` if packages changed, and restart the backend so it loads
+the new code. If a new feature is missing (for example "Your team" says the server is running older code), an old
+backend is probably still running. This happens a lot on Windows, where Ctrl+C can leave the old server alive:
+
+```powershell
+netstat -ano | findstr :8000        # the last number is the process ID (PID) still using port 8000
+taskkill /PID <that number> /F      # stop it, then start the backend again
+```
+
+To check which code the backend runs, open http://localhost:8000/docs: the **teams** section should list
+`/api/me/team/leave`.
+
 ## Test on real phones (needs HTTPS)
 
 Phone browsers only allow location, motion sensors and keep-screen-awake on HTTPS sites. Two options:
