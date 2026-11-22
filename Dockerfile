@@ -7,8 +7,9 @@ WORKDIR /web
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
-# Build with --build-arg VITE_DEMO_MODE=true for the judging demo (shows the fake-location testing tools)
-ARG VITE_DEMO_MODE=false
+# Docker deployments include the fake-location testing tools by default.
+# Build with --build-arg VITE_DEMO_MODE=false to hide them.
+ARG VITE_DEMO_MODE=true
 ENV VITE_DEMO_MODE=$VITE_DEMO_MODE
 RUN npm run build
 

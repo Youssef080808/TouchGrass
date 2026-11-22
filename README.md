@@ -175,9 +175,9 @@ Email + password works with no setup. To add the "Continue with Google" button:
   - "I'm here" at a suggested place only works within 400 m of it.
   - If nobody opens the app for 3 hours, the Hang ends by itself and time counts only up to the last check-in.
     It also ends once everyone has left.
-  - The "pretend I'm somewhere else" testing tools only exist in demo builds (`VITE_DEMO_MODE=true`, always on
-    with `npm run dev`). A determined person can still fake GPS with outside tools; a native app could use the
-    phone's mock-location detection.
+  - The "pretend I'm somewhere else" testing tools are enabled in Docker deployments by default and always on
+    with `npm run dev`. Build with `VITE_DEMO_MODE=false` to hide them. A determined person can still fake GPS
+    with outside tools; a native app could use the phone's mock-location detection.
 - **Meet (people first):** a Hang can be open to new people. Open Hangs show up in the Meet tab and on Home for
   people within 5 km, people who share your interests first. "I'm coming" tells the host (no push, so their game
   isn't interrupted); for "I approve each person" Hangs the host sees a small profile (interests, Hangs done)
