@@ -2,7 +2,7 @@ import { ArrowLeft, Check, Hexagon, LogIn, MapPin, Plus, Smartphone, Users } fro
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import { EmailPasswordFields, looksLikeEmail, OrDivider, PASSWORD_MIN } from '../components/AuthFields'
+import { emailProblem, EmailPasswordFields, OrDivider, passwordProblem } from '../components/AuthFields'
 import GoogleButton from '../components/GoogleButton'
 import { LogoMark } from '../components/Logo'
 import { Button, ErrorText, Rise } from '../components/ui'
@@ -56,6 +56,9 @@ export default function Onboarding() {
   const [password, setPassword] = useState('')
   const [google, setGoogle] = useState(null) // { credential, email }
   const [emailTaken, setEmailTaken] = useState(false)
+  // Field errors show once you leave a field or tap Continue, then update as you type
+  const [touched, setTouched] = useState({})
+  const [tried, setTried] = useState(false)
   const googleOn = useGoogleEnabled()
 
   useEffect(() => {
@@ -79,14 +82,19 @@ export default function Onboarding() {
   const toggleInterest = (i) =>
     setInterests((list) => (list.includes(i) ? list.filter((x) => x !== i) : [...list, i]))
 
-  const canContinue = {
-    welcome: true,
-    account: Boolean(google) || (looksLikeEmail(email) && password.length >= PASSWORD_MIN),
-    name: name.trim().length > 0 && isAdult,
-    interests: interests.length > 0,
-    team: teamId !== null || newTeam.trim().length > 0,
-    home: true,
-  }[STEPS[step]]
+  // Why you can't continue yet, in plain words (null when you can)
+  const problems = {
+    welcome: null,
+    account: google ? null : emailProblem(email) || passwordProblem(password),
+    name: !name.trim() ? 'Enter your first name.' : !isAdult ? "Tick the box to confirm you're 18 or older." : null,
+    interests: interests.length === 0 ? 'Pick at least one thing you like doing.' : null,
+    team: teamId === null && !newTeam.trim() ? 'Pick a team, or type a name for a new one.' : null,
+    home: null,
+  }
+  const problem = problems[STEPS[step]]
+  const show = (field) => tried || touched[field]
+  const emailError = show('email') ? emailProblem(email) : null
+  const passwordError = show('password') ? passwordProblem(password) : null
 
   const setHomeHere = async () => {
     setError(null)
@@ -127,8 +135,9 @@ export default function Onboarding() {
   }
 
   const signInWithEmail = async () => {
-    if (!looksLikeEmail(email) || !password) {
-      setError('Enter your email and password.')
+    const why = emailProblem(email) || passwordProblem(password, false)
+    if (why) {
+      setError(why)
       return
     }
     setBusy(true)
@@ -145,7 +154,7 @@ export default function Onboarding() {
   // The account step: catch a taken email now, not after the whole profile
   const continueAccount = async () => {
     if (google) {
-      setStep(step + 1)
+      goTo(step + 1)
       return
     }
     setBusy(true)
@@ -153,7 +162,7 @@ export default function Onboarding() {
     setEmailTaken(false)
     try {
       const r = await api('/auth/check-email', { method: 'POST', body: { email } })
-      if (r.available) setStep(step + 1)
+      if (r.available) goTo(step + 1)
       else {
         setEmailTaken(true)
         setError("There's already an account with this email.")
@@ -190,10 +199,21 @@ export default function Onboarding() {
     }
   }
 
+  const goTo = (n) => {
+    setTried(false)
+    setError(null)
+    setStep(n)
+  }
+
   const next = () => {
+    if (problem) {
+      setTried(true) // shows what's missing (under each field on the account step, above Continue on others)
+      setError(null)
+      return
+    }
     if (STEPS[step] === 'account') continueAccount()
     else if (step === STEPS.length - 1) finish()
-    else setStep(step + 1)
+    else goTo(step + 1)
   }
 
   if (signingIn) {
@@ -296,7 +316,7 @@ export default function Onboarding() {
   return (
     <div className="flex min-h-dvh flex-col bg-canvas px-5 pb-8 pt-6">
       <div className="mb-8 flex items-center gap-3">
-        <button aria-label="Back" onClick={() => setStep(step - 1)} className="-ml-2 flex size-11 items-center justify-center rounded-full active:bg-chip">
+        <button aria-label="Back" onClick={() => goTo(step - 1)} className="-ml-2 flex size-11 items-center justify-center rounded-full active:bg-chip">
           <ArrowLeft className="size-5" />
         </button>
         <div className="flex flex-1 gap-1.5" aria-label={`Step ${step} of ${STEPS.length - 1}`}>
@@ -334,7 +354,11 @@ export default function Onboarding() {
                     }}
                     password={password}
                     setPassword={setPassword}
-                    onSubmit={() => canContinue && next()}
+                    onSubmit={next}
+                    emailError={emailError}
+                    passwordError={passwordError}
+                    onEmailBlur={() => email && setTouched((t) => ({ ...t, email: true }))}
+                    onPasswordBlur={() => password && setTouched((t) => ({ ...t, password: true }))}
                   />
                 </>
               )}
@@ -475,7 +499,7 @@ export default function Onboarding() {
       </div>
 
       <div className="space-y-3 pt-6">
-        <ErrorText>{error}</ErrorText>
+        <ErrorText>{(tried && STEPS[step] !== 'account' && problem) || error}</ErrorText>
         {emailTaken && STEPS[step] === 'account' && (
           <Button variant="secondary" className="h-12 w-full" onClick={() => {
             setError(null)
@@ -485,7 +509,7 @@ export default function Onboarding() {
             <LogIn className="size-5" aria-hidden /> Sign in instead
           </Button>
         )}
-        <Button className="h-14 w-full text-lg" onClick={next} disabled={!canContinue} loading={busy}>
+        <Button className="h-14 w-full text-lg" onClick={next} loading={busy}>
           {step === STEPS.length - 1 ? (home ? "Let's go" : 'Skip for now') : 'Continue'}
         </Button>
       </div>
