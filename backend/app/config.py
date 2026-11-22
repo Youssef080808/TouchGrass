@@ -38,6 +38,14 @@ REPORTS_TO_BLOCK = _int("REPORTS_TO_BLOCK", 3)
 HEX_RESOLUTION = _int("HEX_RESOLUTION", 9)                        # H3 res 9 = hexes about 350 m across
 TERRITORY_DECAY_PER_DAY = _float("TERRITORY_DECAY_PER_DAY", 0.9)  # territory points keep 90% per day
 
+# Rallies, Team up, hot zones and the weekly recap (plans.py, hotzones.py, routers/rallies.py, routers/recap.py)
+RALLY_REMINDER_MINUTES = _float("RALLY_REMINDER_MINUTES", 20)  # everyone who's in hears "starts in 20 min"
+RALLY_EARLY_MINUTES = _float("RALLY_EARLY_MINUTES", 30)        # you can check in to a rally this long before it starts
+TRUCE_DAYS = _float("TRUCE_DAYS", 7)                           # Team up: how long the two teams share the zone
+HOT_ZONES_PER_DAY = _int("HOT_ZONES_PER_DAY", 2)
+HOT_ZONE_PUSH_HOUR = _int("HOT_ZONE_PUSH_HOUR", 17)            # local hour of the daily "Hot zones tonight" push
+RECAP_PUSH_HOUR = _int("RECAP_PUSH_HOUR", 18)                  # local hour of the Sunday "Your week offline" push
+
 # Web Push notifications. Leave the keys empty and the server makes a pair once and keeps it in
 # backend/vapid.json (git-ignored). Changing keys means everyone has to turn notifications on again.
 VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")

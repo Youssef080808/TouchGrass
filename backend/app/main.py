@@ -17,7 +17,8 @@ from fastapi.responses import FileResponse
 
 from .config import CORS_ORIGINS, STATIC_DIR
 from .db import Base, DB_URL, add_missing_columns, engine
-from .routers import game, hangs, meet, push, teams, users
+from . import hotzones, plans
+from .routers import game, hangs, meet, push, rallies, recap, teams, users
 
 
 @asynccontextmanager
@@ -49,7 +50,19 @@ async def lifespan(app: FastAPI):
                 log.exception("Couldn't send Hang timer notifications")
             await asyncio.sleep(5)
 
-    tasks = [asyncio.create_task(end_forgotten_hangs()), asyncio.create_task(send_hang_timers())]
+    async def run_plan_jobs():
+        # Every 30 seconds: rally reminders, today's hot zones (and their 5 pm push), and the Sunday recap.
+        # Each push goes out once (see plans.py, hotzones.py, routers/recap.py).
+        while True:
+            for job in (plans.run_jobs, hotzones.send_daily_push, recap.run_weekly_push):
+                try:
+                    await run_in_threadpool(job)
+                except Exception:
+                    log.exception("Background job %s failed", job.__name__)
+            await asyncio.sleep(30)
+
+    tasks = [asyncio.create_task(end_forgotten_hangs()), asyncio.create_task(send_hang_timers()),
+             asyncio.create_task(run_plan_jobs())]
     yield
     for task in tasks:
         task.cancel()
@@ -67,6 +80,8 @@ app.include_router(users.router, prefix="/api")
 app.include_router(teams.router, prefix="/api")
 app.include_router(hangs.router, prefix="/api")
 app.include_router(meet.router, prefix="/api")
+app.include_router(rallies.router, prefix="/api")
+app.include_router(recap.router, prefix="/api")
 app.include_router(game.router, prefix="/api")
 app.include_router(push.router, prefix="/api")
 

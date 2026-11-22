@@ -1,4 +1,4 @@
-import { ArrowLeft, CloudRain, Crown, Footprints, Lock, MapPin, Smartphone, Sparkles, Users } from 'lucide-react'
+import { ArrowLeft, CloudRain, Crown, Flame, Footprints, Lock, MapPin, Smartphone, Sparkles, Users } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -12,6 +12,7 @@ import PhoneDownOverlay from '../components/PhoneDownOverlay'
 import ReportButton from '../components/ReportButton'
 import { Avatar, Button, Card, ErrorText, Rise, SectionTitle, Spinner, TeamDot } from '../components/ui'
 import { useHang } from '../hooks/useHang'
+import { useHotZones } from '../hooks/useHotZones'
 import { askMotionPermission } from '../hooks/usePhoneDown'
 import { BUZZ, haptic } from '../lib/haptics'
 import { getPosition } from '../lib/location'
@@ -54,6 +55,7 @@ export default function HangPage() {
   const navigate = useNavigate()
   const { user, refresh: refreshUser } = useUser()
   const { hang, setHang, error } = useHang(id)
+  const hotZones = useHotZones()
   const [phonesDown, setPhonesDown] = useState(false)
   const [rockerOn, setRockerOn] = useState(false)
   const rockerTimer = useRef(null)
@@ -275,6 +277,11 @@ export default function HangPage() {
           {hang.bad_weather && (
             <span className="inline-flex h-9 items-center gap-1.5 rounded-full bg-white/12 px-3.5 font-bold">
               <CloudRain className="size-4" aria-hidden /> Weather +20%
+            </span>
+          )}
+          {hotZones.some((z) => z.hex_id === hang.hex_id) && (
+            <span className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#ff3d00] px-3.5 font-bold text-white">
+              <Flame className="size-4" aria-hidden /> Hot zone x2
             </span>
           )}
         </div>

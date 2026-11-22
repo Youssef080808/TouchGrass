@@ -34,7 +34,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .. import notify, territory
+from .. import hotzones, notify, plans, territory
 from ..auth import current_user
 from ..config import (DAILY_POINTS_CAP, HOME_RADIUS_M, JOIN_RADIUS_M, MIN_HANG_MINUTES, NO_CHECKIN_END_HOURS,
                       PLACE_RADIUS_M, POINTS_TIME_SCALE, REPORTS_TO_BLOCK)
@@ -408,6 +408,8 @@ def _finish_hang(db: Session, hang: Hang, end_at: datetime, reason: str) -> None
     # Nobody else stayed? Then it was really a solo session, with the solo rules.
     host = db.get(User, hang.host_id)
     solo_at_home = not _someone_else_stayed(hang, end_at) and not _solo_counts(hang, host)
+    # Double points if the Hang's zone was a hot zone on the day it started (hotzones.py)
+    hot_zone = hotzones.is_hot(hang.hex_id, hotzones.local_date(hang.started_at))
 
     # People who really took part: stayed MIN_HANG_MINUTES and didn't just go home. They count for the
     # new-people bonus (so someone popping in for a second doesn't count).
@@ -442,7 +444,7 @@ def _finish_hang(db: Session, hang: Hang, end_at: datetime, reason: str) -> None
             new_place=not been_here, bad_weather=hang.bad_weather,
             left_area=m.left_reason == "left_area", cap_left=DAILY_POINTS_CAP - int(earned_today),
             solo_at_home=solo_at_home if m.user_id == hang.host_id else False,
-            new_people=len(new_people),
+            new_people=len(new_people), hot_zone=hot_zone,
         )
         result["new_people_names"] = new_people
         m.points_earned, m.breakdown = result["total"], result
@@ -453,6 +455,7 @@ def _finish_hang(db: Session, hang: Hang, end_at: datetime, reason: str) -> None
 
     db.flush()
     owner_after = territory.owner_of(db, hang.hex_id)
+    plans.after_hang_finished(db, hang)  # rallies: mark done; Team up: start a truce if both teams showed up
     territory.notify_friend_or_foe(db, hang.hex_id, hang.place_name or "a zone near you",
                                    owner_before, owner_after, skip_push={m.user_id for m in hang.members})
 

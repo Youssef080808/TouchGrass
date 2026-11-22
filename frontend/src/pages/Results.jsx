@@ -176,6 +176,7 @@ export default function Results({ hang, me, onHang }) {
               <Tile i={3} icon={<Flame className="size-4" aria-hidden />} label="Streak" value={`x${b.streak_multiplier}`} on={b.streak_multiplier > 1} />
               {b.active_multiplier > 1 && <Tile i={4} icon={<Dumbbell className="size-4" aria-hidden />} label="Active place" value={`x${b.active_multiplier}`} on />}
               {b.weather_multiplier > 1 && <Tile i={5} icon={<CloudRain className="size-4" aria-hidden />} label="Braved weather" value={`x${b.weather_multiplier}`} on />}
+              {b.hot_zone_multiplier > 1 && <Tile i={5} icon={<Flame className="size-4" aria-hidden />} label="Hot zone" value={`x${b.hot_zone_multiplier}`} on />}
               {b.new_place_bonus > 0 && <Tile i={6} icon={<Sparkles className="size-4" aria-hidden />} label="New place" value={`+${b.new_place_bonus}`} on />}
               {b.new_people_bonus > 0 && <Tile i={7} icon={<Handshake className="size-4" aria-hidden />} label="New people" value={`+${b.new_people_bonus}`} on />}
             </div>

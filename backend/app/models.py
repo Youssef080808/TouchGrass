@@ -190,3 +190,94 @@ class PushSubscription(Base):
     p256dh: Mapped[str] = mapped_column(String(200))                   # keys for encrypting messages to it
     auth: Mapped[str] = mapped_column(String(100))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+# ---- Plans: rallies (Hangs planned for later), Team up truces, hot zones. See plans.py and hotzones.py ----
+
+class Rally(Base):
+    """A Hang planned for later: a place and a time. The host's team hears about it (plus the rival team for
+    Team up, and people nearby if it's open) and says "I'm in". The first person to arrive starts the real
+    Hang there; everyone else who's in is checked in when they get there.
+    status: planned, live (the Hang started), done (it ended), cancelled, expired (nobody came)."""
+    __tablename__ = "rallies"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    host_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"), index=True)         # the host's team
+    invite_team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"), index=True)  # Team up: the rival team
+    kind: Mapped[str] = mapped_column(String(10), default="rally")       # rally / team_up
+    visibility: Mapped[str] = mapped_column(String(10), default="team")  # team / open (people nearby see it in Meet)
+    activity: Mapped[str | None] = mapped_column(String(40))
+    place_name: Mapped[str] = mapped_column(String(120))
+    place_type: Mapped[str | None] = mapped_column(String(40))
+    lat: Mapped[float] = mapped_column(Float)
+    lng: Mapped[float] = mapped_column(Float)
+    hex_id: Mapped[str] = mapped_column(String(20), index=True)
+    starts_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    status: Mapped[str] = mapped_column(String(10), default="planned", index=True)
+    hang_id: Mapped[int | None] = mapped_column(ForeignKey("hangs.id"), index=True)  # the real Hang, once someone arrives
+    reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+    host: Mapped[User] = relationship(foreign_keys=[host_id])
+    team: Mapped[Team | None] = relationship(foreign_keys=[team_id])
+    invite_team: Mapped[Team | None] = relationship(foreign_keys=[invite_team_id])
+    hang: Mapped[Hang | None] = relationship()
+    rsvps: Mapped[list["RallyRsvp"]] = relationship(
+        back_populates="rally", order_by="RallyRsvp.created_at", cascade="all, delete-orphan"
+    )
+
+
+class RallyRsvp(Base):
+    """'I'm in' (going) or 'Can't make it' (not going) for a rally."""
+    __tablename__ = "rally_rsvps"
+    __table_args__ = (UniqueConstraint("rally_id", "user_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    rally_id: Mapped[int] = mapped_column(ForeignKey("rallies.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    going: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+    rally: Mapped[Rally] = relationship(back_populates="rsvps")
+    user: Mapped[User] = relationship()
+
+
+class Truce(Base):
+    """Team up: after a joint Hang, the two teams share that zone until ends_at. A shared zone counts for both
+    teams, isn't contested between them, and neither gets a Friend or Foe alert about the other there."""
+    __tablename__ = "truces"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    hex_id: Mapped[str] = mapped_column(String(20), index=True)
+    team_a_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
+    team_b_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
+    hang_id: Mapped[int | None] = mapped_column(ForeignKey("hangs.id"))
+    place_name: Mapped[str | None] = mapped_column(String(120))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    ends_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+
+
+class HotZone(Base):
+    """One of today's double-points zones (picked once a day, see hotzones.py)."""
+    __tablename__ = "hot_zones"
+    __table_args__ = (UniqueConstraint("day", "hex_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    day: Mapped[date] = mapped_column(Date, index=True)  # the city's local date
+    hex_id: Mapped[str] = mapped_column(String(20))
+    place_name: Mapped[str] = mapped_column(String(120))
+    lat: Mapped[float] = mapped_column(Float)
+    lng: Mapped[float] = mapped_column(Float)
+    reason: Mapped[str] = mapped_column(String(20), default="outdoors")  # contested / outdoors / popular
+
+
+class JobRun(Base):
+    """Background jobs that run once a day or once a week (hot-zone push, Sunday recap), even across restarts."""
+    __tablename__ = "job_runs"
+    __table_args__ = (UniqueConstraint("name", "key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(40))
+    key: Mapped[str] = mapped_column(String(40))  # e.g. the day or the week it ran for
+    ran_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
