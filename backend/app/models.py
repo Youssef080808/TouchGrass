@@ -50,6 +50,7 @@ class User(Base):
     points: Mapped[int] = mapped_column(Integer, default=0)
     streak: Mapped[int] = mapped_column(Integer, default=0)
     last_active_date: Mapped[date | None] = mapped_column(Date)
+    quest_claimed_on: Mapped[date | None] = mapped_column(Date)  # last day they claimed the daily quest bonus
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     team: Mapped[Team | None] = relationship(back_populates="members")

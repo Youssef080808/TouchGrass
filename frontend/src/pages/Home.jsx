@@ -12,6 +12,7 @@ import LiquidText from '../components/LiquidText'
 import { LogoMark } from '../components/Logo'
 import OpenHangCard from '../components/OpenHangCard'
 import Rallies from '../components/Rallies'
+import QuestCard from '../components/QuestCard'
 import RallySheet from '../components/RallySheet'
 import TeamRequests from '../components/TeamRequests'
 import { Avatar, Button, Card, ErrorText, Page, Rise, SectionTitle } from '../components/ui'
@@ -309,6 +310,10 @@ export default function Home() {
         </Rise>
 
         <ErrorText>{error && !error.place && error.message}</ErrorText>
+
+        <Rise i={1}>
+          <QuestCard />
+        </Rise>
 
         <FriendOrFoe
           onFight={() => start('group')}
