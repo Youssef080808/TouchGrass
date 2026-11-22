@@ -11,6 +11,7 @@
   90 a friend, 200 a close friend (Jeffrey Hall, Journal of Social and Personal Relationships, 2018).
 - Icebreakers for people meeting for the first time, and reports (enough of them block open Hangs).
 """
+import json
 from collections import Counter
 from datetime import timedelta
 
@@ -409,10 +410,152 @@ def icebreaker(hang_id: int, n: int = Query(default=0, ge=0), user: User = Depen
     topic = next((t for t in shared if t in ICEBREAKERS), None)
     if topic is None and hang.activity in ICEBREAKERS:
         topic = hang.activity
-    questions = ICEBREAKERS.get(topic, []) + GENERIC_QUESTIONS
+    questions = _ai_icebreakers(topic, hang.activity, shared) or (ICEBREAKERS.get(topic, []) + GENERIC_QUESTIONS)
     return {
         "show": True,
         "topic": topic,
         "question": questions[n % len(questions)],
         "first_timers": [m.user.name for m in here if m.user_id in first_timers],
     }
+
+
+# ---------- AI: "What should we do?", icebreakers, "why you'd like it" ----------
+# Each one has a built-in answer, used when there's no GEMINI_API_KEY or the model call fails.
+
+IDEAS = {
+    "Basketball": [("21 to 11", "Everyone for themselves; first to 11 picks the next game."),
+                   ("Shooting ladder", "Make it from each spot on the arc before moving out.")],
+    "Soccer": [("Small-sided game", "Split into two teams, small goals, no keepers."),
+               ("Crossbar challenge", "Everyone gets three tries; loser grabs the water.")],
+    "Running": [("Easy loop, then strides", "Run together at talking pace, finish with 4 short sprints."),
+                ("Pick a landmark", "Run to a spot none of you have been, then walk back.")],
+    "Tennis": [("King of the court", "Winner of each point stays on; everyone rotates in."),
+               ("Doubles with switches", "Swap partners every game so everyone plays together.")],
+    "Board games": [("Quick-game tournament", "Short games, everyone plays everyone once."),
+                    ("Teach-a-game", "Each person teaches a game the others don't know.")],
+    "Coffee": [("Café hop", "Pick two cafés nearby; everyone rates the same drink at each."),
+               ("Walk and sip", "Grab drinks to go and walk somewhere none of you know.")],
+    "Hiking": [("Summit and photo", "Head for the best lookout and take one group photo."),
+               ("Trail bingo", "Spot a dog, a squirrel, a runner, a great view.")],
+    "Study": [("50/10 sprints", "50 minutes of focus, 10 minutes of talking. Repeat."),
+              ("Teach-back", "Each person explains one thing they learned to the others.")],
+    "Food": [("Cheap-eats crawl", "Split three small dishes at three spots nearby."),
+             ("Picnic", "Everyone brings one thing; eat outside if it's nice.")],
+}
+GENERIC_IDEAS = [
+    ("Walk somewhere new", "Pick a street or park none of you have been to and explore."),
+    ("Two truths and a lie", "A quick game to learn something about everyone."),
+    ("Photo challenge", "15 minutes to take the best photo of something nearby; vote on the winner."),
+    ("Find the best view", "Head to the highest point you can reach nearby."),
+]
+
+
+def _local_time_label() -> str:
+    from zoneinfo import ZoneInfo
+
+    from ..config import TIMEZONE
+    from ..timeutil import utcnow as _now
+    h = _now().astimezone(ZoneInfo(TIMEZONE)).hour
+    return "morning" if 5 <= h < 12 else "afternoon" if h < 17 else "evening" if h < 22 else "night"
+
+
+def _group_context(hang: Hang) -> dict:
+    here = [m for m in hang.members if m.left_at is None]
+    counts = Counter(i for m in here for i in set(m.user.interests or []))
+    return {
+        "here": here,
+        "shared": [name for name, c in counts.most_common() if c >= 2][:4],
+        "common": [name for name, _ in counts.most_common(6)],
+    }
+
+
+@router.get("/hangs/{hang_id}/ideas")
+def hang_ideas(hang_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Three things this group could do right now, from what they have in common, the time and the weather."""
+    from .. import ai
+    from ..weather import current_weather
+
+    hang = _get_hang(db, hang_id)
+    ctx = _group_context(hang)
+    if user.id not in {m.user_id for m in ctx["here"]}:
+        raise HTTPException(403, "Only people in this Hang can see its ideas")
+    weather = current_weather(hang.lat, hang.lng) if ai.enabled() else None
+    prompt = (
+        "You suggest things for a small group of people who just met up in person in Montreal to do together "
+        "right now. Keep it cheap or free, safe, doable where they are, and fun for people who may not know "
+        "each other well. No phones as the main activity.\n"
+        f"Group size: {len(ctx['here'])}\n"
+        f"Planned activity: {hang.activity or 'none'}\n"
+        f"Interests they share: {', '.join(ctx['shared']) or 'none'}\n"
+        f"Other interests in the group: {', '.join(ctx['common']) or 'unknown'}\n"
+        f"Where: {hang.place_name or 'a public spot'}\n"
+        f"Time of day: {_local_time_label()}\n"
+        f"Weather: {weather['label'] + ', ' + str(weather['temp_c']) + ' C' if weather else 'unknown'}\n"
+        'Reply with JSON: {"ideas": [{"title": "max 5 words", "detail": "one sentence, max 18 words"}]} '
+        "with exactly 3 ideas, the best first."
+    )
+    data = ai.ask_json(prompt)
+    ideas = []
+    if isinstance(data, dict):
+        for i in data.get("ideas") or []:
+            if isinstance(i, dict) and i.get("title"):
+                ideas.append({"title": ai.clean(i["title"], 40), "detail": ai.clean(i.get("detail"), 140)})
+    if len(ideas) >= 2:
+        return {"source": "ai", "ideas": ideas[:3]}
+    keys = [hang.activity] + ctx["shared"]
+    pool = [x for k in keys if k in IDEAS for x in IDEAS[k]] + GENERIC_IDEAS
+    seen, out = set(), []
+    for title, detail in pool:
+        if title not in seen:
+            seen.add(title)
+            out.append({"title": title, "detail": detail})
+    return {"source": "builtin", "ideas": out[:3]}
+
+
+def _ai_icebreakers(topic: str | None, activity: str | None, shared: list[str]) -> list[str]:
+    from .. import ai
+    prompt = (
+        "Write icebreaker questions for people meeting for the first time in person at a casual meetup. "
+        "Friendly, light, easy to answer, nothing personal or awkward (no dating, money, religion, politics).\n"
+        f"What they're doing: {activity or 'hanging out'}\n"
+        f"Interests they share: {', '.join(shared) or 'unknown'}\n"
+        'Reply with JSON: {"questions": ["..."]} with 5 questions, each under 14 words.'
+    )
+    data = ai.ask_json(prompt)
+    qs = data.get("questions") if isinstance(data, dict) else None
+    return [ai.clean(q, 120) for q in qs if isinstance(q, str) and q.strip()][:5] if isinstance(qs, list) else []
+
+
+@router.get("/meet/why")
+def why_youd_like(ids: str = Query(max_length=200), user: User = Depends(current_user),
+                  db: Session = Depends(get_db)):
+    """One short line per open Hang on why you might enjoy it. Empty when there's no AI (Meet already
+    shows shared interests on each card)."""
+    from .. import ai
+    if not ai.enabled():
+        return {}
+    wanted = [int(x) for x in ids.split(",") if x.strip().isdigit()][:6]
+    rows = []
+    for hid in wanted:
+        hang = db.get(Hang, hid)
+        if hang is None or hang.status != "active" or hang.visibility != "open":
+            continue
+        ctx = _group_context(hang)
+        rows.append({"id": hid, "activity": hang.activity or "hanging out", "size": len(ctx["here"]),
+                     "group_interests": ctx["common"][:5]})
+    if not rows:
+        return {}
+    prompt = (
+        "For each meetup below, write one short, friendly line (max 12 words) telling this person why they "
+        "might enjoy joining. Base it on their interests and the group's. Don't invent facts.\n"
+        f"Their interests: {', '.join(user.interests or []) or 'unknown'}\n"
+        f"Meetups: {json.dumps(rows)}\n"
+        'Reply with JSON: {"lines": [{"id": 1, "line": "..."}]}'
+    )
+    data = ai.ask_json(prompt)
+    out = {}
+    if isinstance(data, dict):
+        for item in data.get("lines") or []:
+            if isinstance(item, dict) and item.get("id") in wanted and item.get("line"):
+                out[str(item["id"])] = ai.clean(item["line"], 90)
+    return out

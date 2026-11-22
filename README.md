@@ -92,9 +92,18 @@ Open that link on your phones. Everything (app + API + live updates) goes throug
 1. Create a free Postgres database on [Neon](https://neon.tech) and copy its connection string.
 2. On [Render](https://render.com): New → Web Service → connect this repo → it detects the `Dockerfile`.
 3. Add environment variables: `DATABASE_URL` (Neon), optionally `GOOGLE_CLIENT_ID` (see below),
-   `GOOGLE_PLACES_API_KEY` and `POINTS_TIME_SCALE`.
+   `GOOGLE_PLACES_API_KEY`, `GEMINI_API_KEY` and `POINTS_TIME_SCALE`.
 4. Deploy, then run the seed once from your laptop with the same `DATABASE_URL` in `backend/.env`:
    `python seed.py --reset`.
+
+**AI ideas and icebreakers (optional)**
+
+Put `GEMINI_API_KEY=...` (free from [Google AI Studio](https://aistudio.google.com/apikey)) in `backend/.env`
+and restart the backend. Then a Hang gets "What should we do?" ideas picked for that group (shared interests,
+time of day, weather), icebreakers written for the group, and Meet cards get a short "why you'd like it" line.
+Only Hang details go to the model, never names, emails or exact locations. Without the key, or if the call
+fails, the app uses built-in ideas and questions. To check it works: in a Hang, tap "Give us ideas"; an
+"AI" tag shows when the answer came from Gemini (otherwise the backend log says why).
 
 **Sign in with Google (optional)**
 

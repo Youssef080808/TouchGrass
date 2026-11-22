@@ -6,7 +6,7 @@ import { api } from '../api'
 import { RollingTimer } from '../components/AnimatedNumber'
 import BonusRing from '../components/BonusRing'
 import GlowRocker from '../components/GlowRocker'
-import { IcebreakerCard, RsvpCard } from '../components/HangPeople'
+import { IcebreakerCard, IdeasCard, RsvpCard } from '../components/HangPeople'
 import HangTimer from '../components/HangTimer'
 import PhoneDownOverlay from '../components/PhoneDownOverlay'
 import ReportButton from '../components/ReportButton'
@@ -22,7 +22,6 @@ import Results from './Results'
 
 const PING_EVERY_MS = 30000      // location check while the app is open
 const HEARTBEAT_EVERY_MS = 15000 // "still in phones-down mode" signal
-const POINT_AWARD_EVERY_MS = 60000
 const PHONES_DOWN_MAX_BONUS = 0.5 // same as backend/app/points.py
 
 const PAUSE_MESSAGES = {
@@ -88,20 +87,6 @@ export default function HangPage() {
     const t = setInterval(send, PING_EVERY_MS)
     return () => clearInterval(t)
   }, [active, stillHere, id])
-
-  // Ask the server to award each newly completed minute, even before the host ends the Hang.
-  useEffect(() => {
-    if (!active || !stillHere) return undefined
-    const tick = () =>
-      api(`/hangs/${id}/tick`, { method: 'POST' })
-        .then((nextHang) => {
-          setHang(nextHang)
-          refreshUser()
-        })
-        .catch(() => {})
-    const t = setInterval(tick, POINT_AWARD_EVERY_MS)
-    return () => clearInterval(t)
-  }, [active, stillHere, id, setHang, refreshUser])
 
   // Phones-down heartbeat: if the phone locks, these stop and the bonus stops growing
   useEffect(() => {
@@ -341,6 +326,12 @@ export default function HangPage() {
           </Rise>
         )}
 
+        {hang.kind === 'group' && active && stillHere && (
+          <Rise i={1}>
+            <IdeasCard hangId={hang.id} />
+          </Rise>
+        )}
+
         {hang.kind === 'group' && stillHere && (
           <Rise i={1}>
             <Card className="flex items-center gap-4">
@@ -436,8 +427,8 @@ export default function HangPage() {
         )}
         <p className="text-center text-[13px] text-faint">
           {isHost
-            ? 'Points are awarded automatically each minute. Ending closes the Hang and shows final results.'
-            : 'Points are awarded automatically each minute. Checking out stops your time.'}
+            ? 'Everyone gets their points when you end the Hang (10 minutes minimum). Then you see the results.'
+            : 'Your points are added when the Hang ends. Checking out stops your time.'}
         </p>
       </div>
     </div>

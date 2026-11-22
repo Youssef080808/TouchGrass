@@ -19,6 +19,8 @@ def _int(name: str, default: int) -> int:
 # Empty DATABASE_URL -> local SQLite file, so the app runs with zero setup.
 DATABASE_URL = os.getenv("DATABASE_URL") or f"sqlite:///{BACKEND_DIR / 'touchgrass.db'}"
 GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()  # optional: AI ideas and icebreakers
+GEMINI_MODEL = os.getenv("GEMINI_MODEL") or "gemini-3.5-flash-lite"
 TIMEZONE = os.getenv("TIMEZONE") or "America/Montreal"
 
 # Game rules

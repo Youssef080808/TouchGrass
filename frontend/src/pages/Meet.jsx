@@ -2,7 +2,7 @@ import { HeartHandshake, RefreshCw, Send, UsersRound } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import OpenHangCard from '../components/OpenHangCard'
+import OpenHangCard, { useWhyLines } from '../components/OpenHangCard'
 import { OpenRallies } from '../components/Rallies'
 import { Avatar, Button, Card, ErrorText, Page, Rise, SectionTitle, TeamDot } from '../components/ui'
 import { getPosition } from '../lib/location'
@@ -76,6 +76,7 @@ function PersonRow({ p }) {
 export default function Meet() {
   const navigate = useNavigate()
   const [hangs, setHangs] = useState(null)
+  const why = useWhyLines(hangs)
   const [people, setPeople] = useState(null)
   const [error, setError] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
@@ -143,7 +144,7 @@ export default function Meet() {
         <div className="space-y-3">
           {hangs?.map((h, i) => (
             <Rise key={h.id} i={i}>
-              <OpenHangCard hang={h} onChange={loadHangs} />
+              <OpenHangCard hang={h} onChange={loadHangs} why={why[h.id]} />
             </Rise>
           ))}
         </div>

@@ -10,7 +10,7 @@ import AnimatedNumber from '../components/AnimatedNumber'
 import FriendOrFoe from '../components/FriendOrFoe'
 import LiquidText from '../components/LiquidText'
 import { LogoMark } from '../components/Logo'
-import OpenHangCard from '../components/OpenHangCard'
+import OpenHangCard, { useWhyLines } from '../components/OpenHangCard'
 import Rallies from '../components/Rallies'
 import RallySheet from '../components/RallySheet'
 import TeamRequests from '../components/TeamRequests'
@@ -172,6 +172,7 @@ export default function Home() {
   }
 
   const nearby = (openHangs ?? []).filter((h) => h.my_status !== 'member').slice(0, 2)
+  const why = useWhyLines(nearby)
 
   return (
     <Page className="bg-canvas">
@@ -367,7 +368,7 @@ export default function Home() {
           <div className="space-y-3">
             {nearby.map((h, i) => (
               <Rise key={h.id} i={i + 1}>
-                <OpenHangCard hang={h} onChange={loadNearby} />
+                <OpenHangCard hang={h} onChange={loadNearby} why={why[h.id]} />
               </Rise>
             ))}
           </div>

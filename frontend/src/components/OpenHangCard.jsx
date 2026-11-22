@@ -1,5 +1,5 @@
-import { ExternalLink, Hourglass, MapPin, ShieldCheck } from 'lucide-react'
-import { useState } from 'react'
+import { ExternalLink, Hourglass, MapPin, ShieldCheck, Sparkles } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { distanceLabel } from '../lib/geo'
@@ -12,7 +12,24 @@ import { Avatar, Button, ErrorText } from './ui'
  * An open Hang near you (Meet and Home). "I'm coming" tells the host; "I'm here" checks you in yourself
  * once you're within 100 m, so nobody has to stop a game to scan you.
  */
-export default function OpenHangCard({ hang, onChange }) {
+/** One short AI line per open Hang on why you might like it ({} when the server has no AI key). */
+export function useWhyLines(hangs) {
+  const ids = (hangs || []).slice(0, 6).map((h) => h.id).join(',')
+  const [lines, setLines] = useState({})
+  useEffect(() => {
+    if (!ids) return undefined
+    let live = true
+    api(`/meet/why?ids=${ids}`)
+      .then((d) => live && setLines(d || {}))
+      .catch(() => {})
+    return () => {
+      live = false
+    }
+  }, [ids])
+  return lines
+}
+
+export default function OpenHangCard({ hang, onChange, why }) {
   const navigate = useNavigate()
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState(null)
@@ -137,6 +154,13 @@ export default function OpenHangCard({ hang, onChange }) {
           )}
         </p>
       </div>
+
+      {why && (
+        <p className="mt-2 flex items-start gap-1.5 rounded-2xl bg-lime/15 px-3 py-2 text-[13px] font-medium leading-snug text-ink">
+          <Sparkles className="mt-0.5 size-3.5 shrink-0 text-brand-ink" aria-hidden />
+          <span>{why}</span>
+        </p>
+      )}
 
       {approve && (
         <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-chip px-2.5 py-0.5 text-xs font-semibold text-ink-soft">

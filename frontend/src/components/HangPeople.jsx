@@ -1,4 +1,4 @@
-import { Check, MessageCircleQuestion, RefreshCw, Route, X } from 'lucide-react'
+import { Check, Lightbulb, MessageCircleQuestion, RefreshCw, Route, Sparkles, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { Avatar, Card, ErrorText, SectionTitle } from './ui'
@@ -108,5 +108,69 @@ export function IcebreakerCard({ hangId, peopleKey }) {
         <RefreshCw className="size-4" aria-hidden /> Another one
       </button>
     </div>
+  )
+}
+
+/**
+ * "What should we do?": three ideas for this group, from what they have in common, the time and the weather.
+ * Loads only when tapped. Uses AI when the server has a key, and built-in ideas otherwise.
+ */
+export function IdeasCard({ hangId }) {
+  const [state, setState] = useState('idle') // idle | loading | done | error
+  const [data, setData] = useState(null)
+
+  function load() {
+    setState('loading')
+    api(`/hangs/${hangId}/ideas`)
+      .then((d) => {
+        setData(d)
+        setState('done')
+      })
+      .catch(() => setState('error'))
+  }
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between gap-3">
+        <p className="flex items-center gap-2 font-display text-lg font-bold uppercase leading-none tracking-wide text-ink">
+          <Lightbulb className="size-5 text-brand-ink" aria-hidden /> What should we do?
+        </p>
+        {data?.source === 'ai' && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-lime/20 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+            <Sparkles className="size-3" aria-hidden /> AI
+          </span>
+        )}
+      </div>
+      {state !== 'done' ? (
+        <>
+          <p className="mt-1 text-[13px] text-ink-soft">Ideas for this group, picked from what you all like, the time and the weather.</p>
+          <button
+            onClick={load}
+            disabled={state === 'loading'}
+            className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-brand px-4 text-sm font-semibold text-white active:opacity-80 disabled:opacity-60"
+          >
+            {state === 'loading' ? (
+              <><RefreshCw className="size-4 animate-spin" aria-hidden /> Thinking…</>
+            ) : (
+              <><Sparkles className="size-4" aria-hidden /> {state === 'error' ? 'Try again' : 'Give us ideas'}</>
+            )}
+          </button>
+        </>
+      ) : (
+        <ol className="mt-3 space-y-2.5">
+          {data.ideas.map((idea, i) => (
+            <li key={idea.title} className="flex gap-3">
+              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-lime font-display text-sm font-bold text-on-accent">
+                {i + 1}
+              </span>
+              <div>
+                <p className="font-semibold leading-tight text-ink">{idea.title}</p>
+                {idea.detail && <p className="text-[13px] leading-snug text-ink-soft">{idea.detail}</p>}
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </Card>
   )
 }
