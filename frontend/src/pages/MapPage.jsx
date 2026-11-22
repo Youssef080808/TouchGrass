@@ -1,6 +1,6 @@
 import { CalendarPlus, Flag, Flame, Handshake, Hexagon, LocateFixed, Shield, X } from 'lucide-react'
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { CircleMarker, MapContainer, Polygon, Popup, TileLayer } from 'react-leaflet'
+import { CircleMarker, MapContainer, Polygon, Popup, TileLayer, useMap } from 'react-leaflet'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { LogoMark } from '../components/Logo'
@@ -47,11 +47,21 @@ function insetBoundary(boundary) {
   ])
 }
 
+function MapInstance({ onReady }) {
+  const map = useMap()
+  useEffect(() => {
+    onReady(map)
+    return () => onReady(null)
+  }, [map, onReady])
+  return null
+}
+
 export default function MapPage() {
   const { user } = useUser()
   const { dark } = useTheme()
   const location = useLocation()
   const navigate = useNavigate()
+  const [map, setMap] = useState(null)
   const [hexes, setHexes] = useState(null)
   const [me, setMe] = useState(null)
   // Arriving from a Hang's results: show what happened to its zone (once, not again on reload)
@@ -76,6 +86,9 @@ export default function MapPage() {
   }, [location.state, location.pathname, navigate])
 
   const target = capture && hexes?.find((h) => h.hex_id === capture.hex)
+  const focusMe = () => {
+    if (map && me) map.flyTo([me.lat, me.lng], Math.max(map.getZoom(), 16), { duration: 0.6 })
+  }
 
   // Buzz as the hexagon flips to your colour
   useEffect(() => {
@@ -151,6 +164,7 @@ export default function MapPage() {
         className="absolute inset-0 z-0"
         style={{ height: '100%', width: '100%' }}
       >
+        <MapInstance onReady={setMap} />
         {dark ? (
           <>
             <TileLayer key="dark" url={MAP_TILES_DARK.url} attribution={MAP_TILES_DARK.attribution}
@@ -242,7 +256,8 @@ export default function MapPage() {
           <CircleMarker
             center={[me.lat, me.lng]}
             radius={9}
-            pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#2563eb', fillOpacity: 1 }}
+            eventHandlers={{ click: focusMe }}
+            pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#2563eb', fillOpacity: 1, className: 'cursor-pointer' }}
           />
         )}
       </MapContainer>
@@ -316,9 +331,16 @@ export default function MapPage() {
         </div>
       )}
       {me && !(target && bannerOpen) && (
-        <span className="pointer-events-none absolute right-4 z-[500] flex items-center gap-1.5 rounded-full bg-surface/95 px-3 py-1.5 text-xs font-semibold text-ink-soft shadow ring-1 ring-line" style={{ bottom: 'calc(env(safe-area-inset-bottom) + 92px)' }}>
+        <button
+          type="button"
+          aria-label="Center map on your location"
+          onClick={focusMe}
+          disabled={!map}
+          className="absolute right-4 z-[500] flex min-h-11 items-center gap-1.5 rounded-full bg-surface/95 px-3 py-1.5 text-xs font-semibold text-ink-soft shadow ring-1 ring-line active:bg-chip disabled:opacity-70"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 92px)' }}
+        >
           <LocateFixed className="size-3.5 text-[#2563eb]" aria-hidden /> You
-        </span>
+        </button>
       )}
       <RallySheet
         preset={rally}
