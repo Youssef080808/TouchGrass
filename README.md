@@ -153,7 +153,8 @@ Open that link on your phones. Everything (app + API + live updates) goes throug
   home, anyone can be reported, reports from 3 different people block someone from open Hangs, and after the
   game the host can say a walk-in wasn't really there (their points for it are taken back). See
   `backend/app/routers/meet.py`.
-- **Rallies (plan a Hang for later):** pick a place, a time (up to 7 days ahead) and an activity, for your team or
+- **Rallies (plan a Hang for later):** pick a place (a suggested one, where you are, or a pin you drop anywhere on
+  the map, which shows whose zone it's in), a time (up to 7 days ahead) and an activity, for your team or
   open to people nearby who share your interests. Everyone who says "I'm in" gets a push 20 minutes before; from
   30 minutes before the start, the app checks you in when you're within 400 m (only while it's open, since a
   website can't track location in the background). The first person to arrive starts the Hang and the rest join

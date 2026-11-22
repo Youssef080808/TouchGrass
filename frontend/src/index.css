@@ -261,3 +261,9 @@ label[for] {
 .pt-safe {
   padding-top: env(safe-area-inset-top);
 }
+
+/* The small map in the rally sheet: keep the map credit on one small line */
+.map-picker .leaflet-control-attribution {
+  font-size: 9px;
+  line-height: 1.4;
+}

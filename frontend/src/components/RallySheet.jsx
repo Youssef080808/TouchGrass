@@ -1,18 +1,23 @@
-import { Flame, Globe2, Handshake, MapPin, Navigation, UsersRound, X } from 'lucide-react'
+import { Flame, Globe2, Handshake, MapPin, MapPinPlus, Navigation, UsersRound, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import { DEFAULT_CENTER } from '../config'
+import { useHotZones } from '../hooks/useHotZones'
 import { cn } from '../lib/cn'
 import { distanceLabel, distanceM } from '../lib/geo'
 import { BUZZ, haptic } from '../lib/haptics'
 import { getPosition } from '../lib/location'
 import { toLocalInput } from '../lib/when'
 import { useUser } from '../user'
+import MapPicker, { inside } from './MapPicker'
 import { Button, ErrorText, TeamDot } from './ui'
 
 const HERE = 'here'
 const ZONE = 'zone'
+const PIN = 'pin'
 const CUSTOM = 'custom'
+const NEAR_M = 150 // a pin this close to a known place takes its name
 const HANGING_OUT = 'Hanging out'
 
 /** Quick times. "Tonight 8 PM" only before 7:30 PM. */
@@ -99,6 +104,10 @@ export default function RallySheet({ preset, onClose, onCreated }) {
   const [zone, setZone] = useState(null) // the preset place, once known
   const [zoneName, setZoneName] = useState('')
   const [hereName, setHereName] = useState('')
+  const [pin, setPin] = useState(null) // { lat, lng } picked on the map
+  const [pinName, setPinName] = useState('')
+  const [turf, setTurf] = useState(null) // team zones, loaded when the map opens
+  const hotZones = useHotZones()
   const [suggested, setSuggested] = useState([])
   const [placeKey, setPlaceKey] = useState(null)
   const [now, setNow] = useState(() => new Date())
@@ -122,6 +131,8 @@ export default function RallySheet({ preset, onClose, onCreated }) {
     setZone(preset.place ? { ...preset.place, hot: preset.hot } : null)
     setZoneName('')
     setHereName('')
+    setPin(null)
+    setPinName('')
     setSuggested([])
     setError(null)
     setLocError(null)
@@ -157,19 +168,51 @@ export default function RallySheet({ preset, onClose, onCreated }) {
   const times = timeChoices(now)
   // Suggested places, minus the one already at the top (a Team up or Rally here spot)
   const places = suggested.filter((p) => !zone?.name || p.name !== zone.name).slice(0, 4)
+  // The pin: the closest known place takes its name, and we show whose zone it's in
+  const known = [
+    ...(zone?.name ? [zone] : []),
+    ...suggested,
+    ...hotZones.map((z) => ({ name: z.place_name, lat: z.lat, lng: z.lng, type: null })),
+  ]
+  const near = pin
+    ? known
+        .map((p) => ({ ...p, d: distanceM(pin, p) }))
+        .filter((p) => p.d <= NEAR_M)
+        .sort((a, b) => a.d - b.d)[0]
+    : null
+  const pinTurf = pin && turf ? turf.find((h) => h.owner && inside(pin, h.boundary)) : null
+  const pinHot = Boolean(pin && hotZones.some((z) => inside(pin, z.boundary)))
+  const pickOnMap = () => {
+    setPlaceKey(PIN)
+    const start = zone ?? here ?? DEFAULT_CENTER
+    if (!pin) setPin({ lat: start.lat, lng: start.lng })
+    if (!turf) api('/territory').then(setTurf).catch(() => setTurf([]))
+  }
+
   const key = placeKey ?? (preset.place || preset.hexId ? ZONE : places.length ? 's0' : HERE)
   const chosen =
     key === ZONE
       ? zone && { ...zone, name: zone.name || zoneName.trim() || 'This zone' }
       : key === HERE
         ? here && { lat: here.lat, lng: here.lng, type: null, name: hereName.trim() || `${user.name}'s spot` }
-        : places[Number(key.slice(1))]
+        : key === PIN
+          ? pin && {
+              lat: pin.lat,
+              lng: pin.lng,
+              type: pinName.trim() ? null : (near?.type ?? null),
+              name: pinName.trim() || near?.name || '',
+            }
+          : places[Number(key.slice(1))]
   const away = (p) => (here && p ? distanceLabel(distanceM(here, p)) : null)
 
   const submit = async () => {
     setError(null)
     if (!chosen) {
       setError(locError || 'Pick a place first.')
+      return
+    }
+    if (!chosen.name) {
+      setError('Name the spot so people know where to meet.')
       return
     }
     const choice = times.find((t) => t.key === timeKey)
@@ -301,6 +344,37 @@ export default function RallySheet({ preset, onClose, onCreated }) {
               aria-label="Name the spot"
               className="h-11 w-full rounded-xl bg-canvas px-3 text-[15px] text-ink outline-none ring-1 ring-line placeholder:text-faint focus:ring-2 focus:ring-brand-ink"
             />
+          )}
+          <PlaceOption
+            on={key === PIN}
+            onClick={pickOnMap}
+            icon={MapPinPlus}
+            title={key === PIN && chosen?.name ? chosen.name : 'Pick on the map'}
+            sub={key === PIN ? 'Drag the map or tap a spot' : 'Anywhere you like'}
+            hot={key === PIN && pinHot}
+          />
+          {key === PIN && pin && (
+            <>
+              <MapPicker start={pin} me={here} zones={turf ?? []} hotZones={hotZones} onMove={setPin} />
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[13px] text-muted">
+                {away(pin) && <span>{away(pin)} away</span>}
+                {pinTurf && (
+                  <span className="inline-flex items-center gap-1">
+                    <TeamDot color={pinTurf.owner.color} className="size-2" />
+                    {pinTurf.owner.id === user.team?.id ? 'Your zone' : `${pinTurf.owner.name}'s zone`}
+                  </span>
+                )}
+                {pinHot && <span className="font-semibold text-[#ff3d00]">Hot zone: double points today</span>}
+              </p>
+              <input
+                value={pinName}
+                onChange={(e) => setPinName(e.target.value)}
+                maxLength={120}
+                placeholder={near ? `Name it (or it's "${near.name}")` : 'Name the spot (e.g. the courts by the pond)'}
+                aria-label="Name the spot"
+                className="h-11 w-full rounded-xl bg-canvas px-3 text-[15px] text-ink outline-none ring-1 ring-line placeholder:text-faint focus:ring-2 focus:ring-brand-ink"
+              />
+            </>
           )}
         </div>
 
