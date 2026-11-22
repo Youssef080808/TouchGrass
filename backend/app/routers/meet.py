@@ -235,7 +235,7 @@ def arrive(hang_id: int, body: Location, user: User = Depends(current_user), db:
     if d > JOIN_RADIUS_M:
         far = f"{d / 1000:.1f} km" if d >= 1000 else f"{d:.0f} m"
         raise HTTPException(400, f"You're {far} away. You can check in once you're within {JOIN_RADIUS_M:.0f} m.")
-    full = (here_count(hang) >= hang.max_size) if going else (spots_left(db, hang) == 0)
+    full = bool(hang.max_size) and ((here_count(hang) >= hang.max_size) if going else (spots_left(db, hang) == 0))
     if hang.max_size and full:
         raise HTTPException(409, f"This Hang is full ({hang.max_size} people max).")
     now = utcnow()

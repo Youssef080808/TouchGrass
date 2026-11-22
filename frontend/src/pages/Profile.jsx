@@ -2,8 +2,10 @@ import { Check, Flame, FlaskConical, Handshake, Hexagon, LogOut, MapPin, Monitor
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import AnimatedNumber from '../components/AnimatedNumber'
+import HangHistory from '../components/HangHistory'
 import NotificationsCard from '../components/NotificationsCard'
 import TeamCard from '../components/TeamCard'
+import WeekRecap from '../components/WeekRecap'
 import { Avatar, Button, Card, ErrorText, Rise, SectionTitle } from '../components/ui'
 import { DEMO_MODE } from '../config'
 import { getFakeLocation, getPosition, setFakeLocation, TEST_LOCATIONS } from '../lib/location'
@@ -138,6 +140,14 @@ export default function Profile() {
           </p>
         )}
         <ErrorText>{error}</ErrorText>
+
+        <Rise>
+          <WeekRecap />
+        </Rise>
+
+        <Rise>
+          <HangHistory />
+        </Rise>
 
         <Rise>
           <TeamCard />

@@ -11,6 +11,8 @@ import FriendOrFoe from '../components/FriendOrFoe'
 import LiquidText from '../components/LiquidText'
 import { LogoMark } from '../components/Logo'
 import OpenHangCard from '../components/OpenHangCard'
+import Rallies from '../components/Rallies'
+import RallySheet from '../components/RallySheet'
 import TeamRequests from '../components/TeamRequests'
 import { Avatar, Button, Card, ErrorText, Page, Rise, SectionTitle } from '../components/ui'
 import { cn } from '../lib/cn'
@@ -91,6 +93,8 @@ export default function Home() {
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState(null) // { place, message }: place is set when a place card was tapped
   const [code, setCode] = useState('')
+  const [rally, setRally] = useState(null) // the Plan a rally / Team up sheet: null = closed
+  const [ralliesKey, setRalliesKey] = useState(0)
 
   // What you're starting: activity, open or friends-only, how many people, who can come
   const activities = [...new Set([...(user.interests ?? []).slice(0, 4), 'Hanging out', 'Study'])]
@@ -306,9 +310,15 @@ export default function Home() {
 
         <ErrorText>{error && !error.place && error.message}</ErrorText>
 
-        <FriendOrFoe onFight={() => start('group')} onTeamUp={() => start('group')} />
+        <FriendOrFoe
+          onFight={() => start('group')}
+          onTeamUp={(n) => setRally({ hexId: n.hex_id, inviteTeam: n.other_team })}
+        />
 
         <TeamRequests />
+
+        {/* Plans for later: your team's rallies and Team ups */}
+        <Rallies onPlan={() => setRally({})} refreshKey={ralliesKey} />
 
         {user.points === 0 && !active && (
           <Rise i={1}>
@@ -453,6 +463,15 @@ export default function Home() {
           </div>
         </details>
       </div>
+
+      <RallySheet
+        preset={rally}
+        onClose={() => setRally(null)}
+        onCreated={() => {
+          setRally(null)
+          setRalliesKey((k) => k + 1)
+        }}
+      />
     </Page>
   )
 }

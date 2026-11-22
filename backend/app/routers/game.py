@@ -14,6 +14,7 @@ from ..geo import hex_boundary
 from ..models import Team, User
 from ..places import SAMPLE_PLACES, google_nearby, rank, types_for
 from ..serializers import team_out
+from ..timeutil import iso
 from ..weather import current_weather_async
 
 router = APIRouter(tags=["game"])
@@ -21,16 +22,21 @@ router = APIRouter(tags=["game"])
 
 @router.get("/territory")
 def get_territory(db: Session = Depends(get_db)):
-    """Every hexagon anyone has scored in, with its owner and each team's score."""
+    """Every hexagon anyone has scored in, with its owner and each team's score.
+    shared_with: the other team when the owner shares it after a Team up (a truce), so it isn't contested."""
     teams = {t.id: t for t in db.scalars(select(Team))}
+    truces = territory.active_truces(db)
     out = []
     for hex_id, scores in territory.standings(db).items():
         owner_id, contested = territory.owner_from(scores)
+        ally_id = territory.ally_of(truces.get(hex_id), owner_id)
         out.append({
             "hex_id": hex_id,
             "boundary": hex_boundary(hex_id),
             "owner": team_out(teams.get(owner_id)) if owner_id else None,
-            "contested": contested,
+            "contested": contested and ally_id is None,
+            "shared_with": team_out(teams.get(ally_id)) if ally_id else None,
+            "shared_until": iso(truces[hex_id].ends_at) if ally_id else None,
             "scores": sorted(
                 [{**team_out(teams[tid]), "points": round(p)} for tid, p in scores.items() if tid in teams],
                 key=lambda s: s["points"], reverse=True,
@@ -44,10 +50,14 @@ def leaderboard(db: Session = Depends(get_db)):
     teams = {t.id: t for t in db.scalars(select(Team))}
     hexes_owned: dict[int, int] = defaultdict(int)
     team_points: dict[int, float] = defaultdict(float)
-    for scores in territory.standings(db).values():
+    truces = territory.active_truces(db)
+    for hex_id, scores in territory.standings(db).items():
         owner_id, _ = territory.owner_from(scores)
         if owner_id:
             hexes_owned[owner_id] += 1
+            ally_id = territory.ally_of(truces.get(hex_id), owner_id)
+            if ally_id:  # a shared zone (Team up) counts for both teams
+                hexes_owned[ally_id] += 1
         for tid, p in scores.items():
             team_points[tid] += p
     team_rows = sorted(

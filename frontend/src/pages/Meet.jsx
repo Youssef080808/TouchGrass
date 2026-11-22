@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import OpenHangCard from '../components/OpenHangCard'
+import { OpenRallies } from '../components/Rallies'
 import { Avatar, Button, Card, ErrorText, Page, Rise, SectionTitle, TeamDot } from '../components/ui'
 import { getPosition } from '../lib/location'
 
@@ -147,6 +148,9 @@ export default function Meet() {
           ))}
         </div>
       </section>
+
+      {/* Open rallies: Hangs people nearby planned for later */}
+      <OpenRallies />
 
       <section className="pt-6">
         <SectionTitle>Your people</SectionTitle>

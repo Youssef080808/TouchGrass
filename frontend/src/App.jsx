@@ -11,6 +11,7 @@ import Meet from './pages/Meet'
 import Onboarding, { PENDING_JOIN_KEY } from './pages/Onboarding'
 import Profile from './pages/Profile'
 import { useAutoArrive } from './hooks/useAutoArrive'
+import { useRallyArrive } from './hooks/useRallyArrive'
 import { syncPush } from './lib/push'
 import { useUser } from './user'
 
@@ -50,6 +51,8 @@ export default function App() {
 
   // Said "I'm coming" to an open Hang? Check in by itself on arrival (not while already on a Hang screen).
   useAutoArrive(Boolean(user?.id) && !location.pathname.startsWith('/hang/'))
+  // Said "I'm in" to a rally? Same idea: checked in by itself when you get to the place.
+  useRallyArrive(Boolean(user?.id) && !location.pathname.startsWith('/hang/'))
 
   if (loading) {
     return (

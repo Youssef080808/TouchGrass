@@ -1,11 +1,13 @@
-import { Flag, Hexagon, LocateFixed, Shield, X } from 'lucide-react'
+import { CalendarPlus, Flag, Flame, Handshake, Hexagon, LocateFixed, Shield, X } from 'lucide-react'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { CircleMarker, MapContainer, Polygon, Popup, TileLayer } from 'react-leaflet'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { LogoMark } from '../components/Logo'
+import RallySheet from '../components/RallySheet'
 import { Button, TeamDot } from '../components/ui'
 import { DEFAULT_CENTER, MAP_TILES, MAP_TILES_DARK } from '../config'
+import { useHotZones } from '../hooks/useHotZones'
 import { BUZZ, haptic } from '../lib/haptics'
 import { getPosition } from '../lib/location'
 import { useTheme } from '../theme'
@@ -15,6 +17,19 @@ import { useUser } from '../user'
 const NOBODY = '#94a3b8'
 const FLIP_AT_MS = 1150 // middle of the flip animation in index.css (0.7 s delay + half of 0.9 s)
 const BORDER_INSET = 0.985
+const HOT = '#ff3d00' // today's hot zones (double points) glow in this colour
+
+/** In a zone's popup: plan a rally there (opens the Plan a rally sheet). */
+function RallyHere({ onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="mt-2.5 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-[#0b1d3a] px-3 text-sm font-semibold text-white active:opacity-80"
+    >
+      <CalendarPlus className="size-4" aria-hidden /> Rally here
+    </button>
+  )
+}
 
 function centerOf(boundary) {
   const n = boundary.length
@@ -42,6 +57,14 @@ export default function MapPage() {
   // Arriving from a Hang's results: show what happened to its zone (once, not again on reload)
   const [capture] = useState(() => location.state?.capture ?? null)
   const [bannerOpen, setBannerOpen] = useState(true)
+  const [rally, setRally] = useState(null) // the Plan a rally sheet: null = closed
+  const hot = useHotZones()
+  const hotByHex = useMemo(() => new Map(hot.map((z) => [z.hex_id, z])), [hot])
+  const scored = useMemo(() => new Set((hexes ?? []).map((h) => h.hex_id)), [hexes])
+  const rallyAt = (hexId) => {
+    const z = hotByHex.get(hexId)
+    setRally(z ? { hexId, hot: true, place: { name: z.place_name, lat: z.lat, lng: z.lng, type: null } } : { hexId })
+  }
 
   useEffect(() => {
     api('/territory').then(setHexes).catch(() => setHexes([]))
@@ -64,10 +87,13 @@ export default function MapPage() {
   const legend = useMemo(() => {
     const counts = new Map()
     for (const h of hexes ?? []) {
-      if (!h.owner) continue
-      const entry = counts.get(h.owner.id) ?? { ...h.owner, hexes: 0 }
-      entry.hexes += 1
-      counts.set(h.owner.id, entry)
+      // A zone shared after a Team up counts for both teams (same as the leaderboard)
+      for (const team of [h.owner, h.shared_with]) {
+        if (!team) continue
+        const entry = counts.get(team.id) ?? { ...team, hexes: 0 }
+        entry.hexes += 1
+        counts.set(team.id, entry)
+      }
     }
     return [...counts.values()].sort((a, b) => b.hexes - a.hexes)
   }, [hexes])
@@ -102,6 +128,19 @@ export default function MapPage() {
               <rect x="5" width="5" height="10" fill={team.color} />
             </pattern>
           ))}
+          {(hexes ?? []).filter((h) => h.shared_with && h.owner).map((h) => (
+            <pattern
+              key={h.hex_id}
+              id={`shared-pattern-${h.hex_id}`}
+              patternUnits="userSpaceOnUse"
+              width="12"
+              height="12"
+              patternTransform="rotate(45)"
+            >
+              <rect width="6" height="12" fill={h.owner.color} />
+              <rect x="6" width="6" height="12" fill={h.shared_with.color} />
+            </pattern>
+          ))}
         </defs>
       </svg>
       <MapContainer
@@ -132,8 +171,10 @@ export default function MapPage() {
                 positions={h.boundary}
                 pathOptions={{
                   stroke: false,
-                  fillColor: h.contested ? `url(#contested-pattern-${h.owner?.id})` : color,
-                  fillOpacity: h.contested ? 0.75 : h.owner ? (isTarget ? 0.55 : 0.4) : 0.12,
+                  fillColor: h.shared_with
+                    ? `url(#shared-pattern-${h.hex_id})`
+                    : h.contested ? `url(#contested-pattern-${h.owner?.id})` : color,
+                  fillOpacity: h.shared_with ? 0.6 : h.contested ? 0.75 : h.owner ? (isTarget ? 0.55 : 0.4) : 0.12,
                 }}
                 className={isTarget && capture.flipped ? 'hex-capture-fill' : undefined}
               >
@@ -141,7 +182,17 @@ export default function MapPage() {
                   <p className="m-0 font-display text-lg font-bold leading-tight">
                     {h.owner ? `${h.owner.name} hold this zone` : 'Nobody holds this zone'}
                   </p>
+                  {h.shared_with && (
+                    <p className="m-0 mt-1 flex items-center gap-1 font-semibold">
+                      <Handshake className="size-4 shrink-0" aria-hidden /> Shared with {h.shared_with.name} (Team up)
+                    </p>
+                  )}
                   {h.contested && <p className="m-0 mt-1 font-semibold text-danger">Contested! It could flip any time.</p>}
+                  {hotByHex.has(h.hex_id) && (
+                    <p className="m-0 mt-1 flex items-center gap-1 font-semibold" style={{ color: HOT }}>
+                      <Flame className="size-4 shrink-0" aria-hidden /> Hot zone: double points today
+                    </p>
+                  )}
                   <ul className="m-0 mt-2 list-none space-y-1 p-0">
                     {h.scores.map((s) => (
                       <li key={s.id} className="flex items-center gap-2">
@@ -149,6 +200,7 @@ export default function MapPage() {
                       </li>
                     ))}
                   </ul>
+                  <RallyHere onClick={() => rallyAt(h.hex_id)} />
                 </Popup>
               </Polygon>
               <Polygon
@@ -164,6 +216,28 @@ export default function MapPage() {
             </Fragment>
           )
         })}
+        {hot.map((z) => (
+          <Fragment key={`hot-${z.hex_id}`}>
+            {!scored.has(z.hex_id) && (
+              <Polygon positions={z.boundary} pathOptions={{ stroke: false, fillColor: HOT, fillOpacity: 0.14 }}>
+                <Popup>
+                  <p className="m-0 flex items-center gap-1 font-display text-lg font-bold leading-tight" style={{ color: HOT }}>
+                    <Flame className="size-5 shrink-0" aria-hidden /> Hot zone
+                  </p>
+                  <p className="m-0 mt-1 font-semibold">{z.place_name}</p>
+                  <p className="m-0 mt-1">Double points here today, until midnight. Nobody holds it yet.</p>
+                  <RallyHere onClick={() => rallyAt(z.hex_id)} />
+                </Popup>
+              </Polygon>
+            )}
+            <Polygon
+              positions={insetBoundary(z.boundary)}
+              interactive={false}
+              className="hex-hot"
+              pathOptions={{ color: HOT, weight: 3, dashArray: '8 6', fill: false }}
+            />
+          </Fragment>
+        ))}
         {me && (
           <CircleMarker
             center={[me.lat, me.lng]}
@@ -178,7 +252,7 @@ export default function MapPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <h1 className="font-display text-[30px] font-extrabold uppercase leading-none">Territory</h1>
-              <p className="mt-1 text-sm text-muted">Hang out somewhere to claim it. Amber fill = contested.</p>
+              <p className="mt-1 text-sm text-muted">Hang out somewhere to claim it. Amber fill = contested. Tap a zone to rally there.</p>
             </div>
             {user.team && (
               <span className="flex shrink-0 items-center gap-1.5 rounded-2xl bg-lime px-3 py-2 font-display text-lg font-bold leading-none text-on-accent">
@@ -197,6 +271,11 @@ export default function MapPage() {
                 <TeamDot color={t.color} className="size-2.5" /> {t.name} · {t.hexes}
               </span>
             ))}
+            {hot.length > 0 && (
+              <span className="flex h-8 items-center gap-1 rounded-full px-2.5 text-[13px] font-bold text-white" style={{ backgroundColor: HOT }}>
+                <Flame className="size-3.5" aria-hidden /> Hot zones x2 today
+              </span>
+            )}
             {hexes === null && <span className="h-8 w-40 animate-pulse rounded-full bg-chip" aria-label="Loading" />}
             {!legend.length && hexes?.length > 0 && <span className="text-sm text-faint">Nobody holds a zone right now.</span>}
           </div>
@@ -241,6 +320,14 @@ export default function MapPage() {
           <LocateFixed className="size-3.5 text-[#2563eb]" aria-hidden /> You
         </span>
       )}
+      <RallySheet
+        preset={rally}
+        onClose={() => setRally(null)}
+        onCreated={() => {
+          setRally(null)
+          navigate('/') // the new rally is on Home
+        }}
+      />
     </div>
   )
 }

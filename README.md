@@ -5,7 +5,8 @@
 Turfed rewards time spent off your phone with real people. Start a Hang somewhere real, friends join by scanning
 your QR code, everyone puts their phone face-down, and you earn points. Points also claim map hexagons for your
 team, so your crew can take over parks and neighbourhoods. When another team takes one of your zones, you get a
-**Friend or Foe** choice: fight back, or team up for a joint Hang.
+**Friend or Foe** choice: fight back, or team up for a joint Hang and share the zone. Plan **rallies** ahead of
+time, chase the day's **hot zones** for double points, and see your **week offline** every Sunday.
 
 Built for CodeJam 16 (Touch Grass / People First tracks). It's a mobile website that installs to the home screen
 like an app, so anyone can join a Hang by scanning a QR code with no app store.
@@ -19,7 +20,10 @@ backend/                FastAPI + SQLAlchemy (Postgres on Neon, or SQLite for qu
   app/points.py         the points formula (tune the numbers here)
   app/territory.py      hexagon ownership, fading, Friend or Foe alerts
   app/places.py         place suggestions (Google Places or sample Montreal places)
-  app/routers/          API endpoints: users, teams (join requests), hangs (+ live WebSocket), map/leaderboard/suggestions
+  app/plans.py          rallies: reminders, auto-expiry, Team up truces
+  app/hotzones.py       the day's hot zones (double points) and the evening push
+  app/routers/          API endpoints: users, teams (join requests), hangs (+ live WebSocket), map/leaderboard/suggestions,
+                        meet (open Hangs), rallies (plans, zones, hot zones), recap (weekly recap, history)
   seed.py               fake teams, players and territory for demos
 frontend/               React + Vite + Tailwind, phone-first
   src/pages/            Onboarding, Home, HangPage, Results, MapPage, Leaderboard, Profile, JoinPage
@@ -104,13 +108,20 @@ Open that link on your phones. Everything (app + API + live updates) goes throug
 - Meet demo with two phones: phone A starts an open Hang; phone B (a few hundred metres away, or with a test
   location) sees it in Meet, taps "I'm coming", then "I'm here" on arrival (or just waits: with the app open it
   checks itself in within about 30 seconds of getting within 100 m). Nobody scans anything.
+- Rallies: `python seed.py --reset` (or `--open`) also adds three sample rallies: a Team up soccer game with a
+  rival team, an open board games night and an open run. Plan your own from Home ("Plan one"), from the Map (tap
+  any zone, then "Rally here") or with "Team up" on a Friend or Foe alert. Saying "I'm in" checks you in by
+  itself when you get there with the app open.
+- Hot zones: two zones a day are picked automatically (one contested, one outdoors) and announced at 5 PM
+  (`HOT_ZONE_PUSH_HOUR`). Any Hang in one shows "Hot zone x2" and scores double.
 - `python seed.py --reset` wipes everything and reloads the sample data before you present. Also run it after
   pulling changes that add database columns (SQLite doesn't update existing tables).
 
 ## How it works (for the judges' Q&A)
 
 - **Points:** minutes together × party bonus (+0.5 per teammate, +0.3 per other player, max 3×) × phones-down
-  bonus (up to 1.5×) × streak bonus (+10% per day, max +50%) × active place (+20%) × bad weather (+20%), plus 25
+  bonus (up to 1.5×) × streak bonus (+10% per day, max +50%) × active place (+20%) × bad weather (+20%) × hot zone
+  (2×), plus 25
   for a new place, plus 15 for each person you've never been in a Hang with (up to 45), so meeting new people
   pays. Daily cap 300. See `backend/app/points.py`.
 - **Locking your phone is fine:** your time counts from check-in to check-out (or until the host ends the Hang).
@@ -142,6 +153,23 @@ Open that link on your phones. Everything (app + API + live updates) goes throug
   home, anyone can be reported, reports from 3 different people block someone from open Hangs, and after the
   game the host can say a walk-in wasn't really there (their points for it are taken back). See
   `backend/app/routers/meet.py`.
+- **Rallies (plan a Hang for later):** pick a place (a suggested one, where you are, or a pin you drop anywhere on
+  the map, which shows whose zone it's in), a time (up to 7 days ahead) and an activity, for your team or
+  open to people nearby who share your interests. Everyone who says "I'm in" gets a push 20 minutes before; from
+  30 minutes before the start, the app checks you in when you're within 400 m (only while it's open, since a
+  website can't track location in the background). The first person to arrive starts the Hang and the rest join
+  it; nobody scans anything. Rallies nobody shows up to expire 2 hours after the start. See
+  `backend/app/routers/rallies.py` and `backend/app/plans.py`.
+- **Team up:** on a Friend or Foe alert, "Team up" plans a rally at that zone with the rival team invited. If
+  people from both teams show up and earn points, the zone is shared for 7 days: it counts for both teams on the
+  leaderboard, it isn't shown as contested, and neither team gets a "zone taken" alert from the other. This
+  turns rivals into new people to meet, which is the People First idea.
+- **Hot zones:** two zones a day score 2×: one that's contested (so teams fight over it) and one outdoor place.
+  The pick is the same for everyone (seeded by the date), they glow on the map until midnight, and everyone with
+  notifications on gets one push at 5 PM. They spread people around the city and give a reason to go out tonight.
+- **Your week offline:** the Me tab shows this week's hours with friends, new people met, zones held and
+  phones-down time, compared with last week, plus a history of every Hang. A push goes out on Sunday evening.
+  See `backend/app/routers/recap.py`.
 - **Your people:** the Meet tab lists everyone you've hung out with and your hours together. Research by
   Jeffrey Hall (2018) found it takes about 50 hours together to become casual friends, 90 to become friends and
   200 to become close friends, so each person shows a level and progress to the next one. "Hang again" sends
@@ -164,11 +192,12 @@ Open that link on your phones. Everything (app + API + live updates) goes throug
   never individual people.
 - **What breaks at 100× the users:** territory is computed from every score row on each request (fix: keep running
   totals per hex and team, fade them nightly); the WebSocket checks the database every 2 s per viewer (fix:
-  Postgres LISTEN/NOTIFY or Redis pub/sub); tables are created on startup (fix: Alembic migrations).
+  Postgres LISTEN/NOTIFY or Redis pub/sub); tables are created on startup (fix: Alembic migrations); reminders and
+  daily pushes run inside the web server every 30 s (fix: one worker process; daily and weekly pushes already
+  record that they ran, so two servers won't send them twice).
 
 ## Ideas to build next
 
-- "Team up" button: start a joint Hang with the rival team and split the zone (now it just starts a Hang).
 - Photo check with an AI vision model as extra proof you're outside.
 - Friends list and matching with nearby people who share interests.
 - Native app version: real screen-time and pickup data, app blocking, push notifications.

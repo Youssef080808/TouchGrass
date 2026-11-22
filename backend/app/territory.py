@@ -3,6 +3,8 @@
 Every Hang adds points for each member's team to the Hang's hexagon (HexScore rows).
 A team's score in a hex = sum of its points, each faded by TERRITORY_DECAY_PER_DAY per day.
 The team with the highest score owns the hex. It is "contested" when the runner-up has 80%+ of it.
+Team up: two teams with a truce on a hex share it (it counts for both, see plans.py), and they don't get
+Friend or Foe alerts about each other there.
 
 Scores are computed on read, which is simple and fine for a hackathon.
 At 100x the users: keep a running total per (hex, team) and apply the fade in a nightly job.
@@ -14,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from . import notify
 from .config import TERRITORY_DECAY_PER_DAY
-from .models import HexScore, Notification, Team, User
+from .models import HexScore, Notification, Team, Truce, User
 from .timeutil import utcnow
 
 MIN_POINTS_TO_OWN = 1.0
@@ -47,12 +49,33 @@ def owner_of(db: Session, hex_id: str) -> int | None:
     return owner_from(standings(db, [hex_id]).get(hex_id, {}))[0]
 
 
+def active_truces(db: Session, hex_ids: list[str] | None = None) -> dict[str, Truce]:
+    """{hex_id: the newest truce still running there} (Team up)"""
+    query = select(Truce).where(Truce.ends_at > utcnow()).order_by(Truce.created_at)
+    if hex_ids is not None:
+        query = query.where(Truce.hex_id.in_(hex_ids))
+    return {t.hex_id: t for t in db.scalars(query)}
+
+
+def ally_of(truce: Truce | None, team_id: int | None) -> int | None:
+    """The other team in a truce, if team_id is one of its two teams."""
+    if truce is None or team_id is None:
+        return None
+    if truce.team_a_id == team_id:
+        return truce.team_b_id
+    if truce.team_b_id == team_id:
+        return truce.team_a_id
+    return None
+
+
 def notify_friend_or_foe(db: Session, hex_id: str, place: str, before: int | None, after: int | None,
                          skip_push: set[int] = frozenset()) -> None:
     """When a hex changes hands, tell both teams. The losing team gets the Friend or Foe choice.
     skip_push: people who don't need a push about it (they were in the Hang and see it on the results screen)."""
     if before is None or after is None or before == after:
         return
+    if ally_of(active_truces(db, [hex_id]).get(hex_id), before) == after:
+        return  # the two teams share this zone (Team up), so it's not a fight
     winner, loser = db.get(Team, after), db.get(Team, before)
     if winner is None or loser is None:
         return
