@@ -50,15 +50,30 @@ You need Python 3.11+ and Node 22+. Use two terminals.
 
 **Terminal 1: backend**
 
+**macOS/Linux**
 ```bash
 cd backend
 python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env               # then paste your Neon DATABASE_URL, or leave it empty for SQLite
 python seed.py --reset             # fake teams, players and territory
 uvicorn app.main:app --reload
 ```
+
+**Windows PowerShell**
+```powershell
+cd backend
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+python seed.py --reset
+python -m uvicorn app.main:app --reload
+```
+
+If PowerShell blocks the activation script, run `Set-ExecutionPolicy -Scope Process Bypass` first,
+or use Command Prompt and run `.venv\Scripts\activate.bat` instead.
 
 API docs: http://localhost:8000/docs
 
@@ -87,14 +102,20 @@ cloudflared tunnel --url http://localhost:8000    # install cloudflared first; p
 
 Open that link on your phones. Everything (app + API + live updates) goes through the one URL.
 
-**For the demo: deploy**
+**Deploy on Render with a hosted Postgres database**
 
-1. Create a free Postgres database on [Neon](https://neon.tech) and copy its connection string.
-2. On [Render](https://render.com): New → Web Service → connect this repo → it detects the `Dockerfile`.
-3. Add environment variables: `DATABASE_URL` (Neon), optionally `GOOGLE_CLIENT_ID` (see below),
-   `GOOGLE_PLACES_API_KEY` and `POINTS_TIME_SCALE`.
-4. Deploy, then run the seed once from your laptop with the same `DATABASE_URL` in `backend/.env`:
-   `python seed.py --reset`.
+1. Create a Postgres database on [Neon](https://neon.tech) and copy its connection string. Keep it private.
+2. In [Render](https://render.com), create a Blueprint from this repository and use `render.yaml`.
+   It builds the Docker image and serves the frontend and API together. When prompted, enter the Neon
+   connection string as the `DATABASE_URL` secret; do not commit it or put it in this README.
+3. Deploy. The `/api/health` check confirms the service is running. Production refuses to start without
+   a PostgreSQL `DATABASE_URL`, so it cannot silently fall back to an ephemeral local SQLite file.
+4. To load demo data, run `python seed.py --reset` once from `backend` with the same `DATABASE_URL`
+   configured locally in `backend/.env`. This clears existing data, so only do it on a fresh demo database.
+
+The Render Blueprint assumes the database is provisioned separately on Neon. Local development still uses
+SQLite when `DATABASE_URL` is empty. Optional settings such as `GOOGLE_CLIENT_ID` and
+`GOOGLE_PLACES_API_KEY` can be added in Render's environment settings.
 
 **Sign in with Google (optional)**
 
