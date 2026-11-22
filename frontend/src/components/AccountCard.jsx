@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { api } from '../api'
 import { useGoogleEnabled } from '../lib/google'
 import { useUser } from '../user'
-import { EmailPasswordFields, looksLikeEmail, OrDivider, PASSWORD_MIN } from './AuthFields'
+import { emailProblem, EmailPasswordFields, OrDivider, passwordProblem } from './AuthFields'
 import GoogleButton from './GoogleButton'
 import { Button, Card, ErrorText } from './ui'
 
@@ -33,12 +33,9 @@ export default function AccountCard() {
 
   const addPassword = async () => {
     setError(null)
-    if (!user.email && !looksLikeEmail(email)) {
-      setError('Enter your email address.')
-      return
-    }
-    if (password.length < PASSWORD_MIN) {
-      setError(`Use at least ${PASSWORD_MIN} characters for your password.`)
+    const why = (!user.email && emailProblem(email)) || passwordProblem(password)
+    if (why) {
+      setError(why)
       return
     }
     setBusy(true)
