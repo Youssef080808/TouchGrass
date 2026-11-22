@@ -45,6 +45,21 @@ def add_missing_columns() -> list[str]:
     return added
 
 
+def add_missing_indexes() -> list[str]:
+    """Indexes for columns added by add_missing_columns() (e.g. unique emails). Skips ones that exist."""
+    db_tables = inspect(engine)
+    added = []
+    for table in Base.metadata.sorted_tables:
+        if not db_tables.has_table(table.name):
+            continue
+        existing = {i["name"] for i in db_tables.get_indexes(table.name)}
+        for index in table.indexes:
+            if index.name not in existing:
+                index.create(bind=engine, checkfirst=True)
+                added.append(index.name)
+    return added
+
+
 def get_db():
     """FastAPI dependency: one database session per request."""
     db = SessionLocal()

@@ -1,7 +1,8 @@
 """Database tables.
 
 Team         a friend group; territory belongs to teams
-User         one player (no passwords: a random token identifies the device)
+User         one player; signs in with email + password and/or Google
+LoginSession one signed-in device (only a hash of its token is stored)
 Hang         one session, solo or group, at one place
 HangMember   who was in a Hang, when they joined and left, their phones-down bonus time
 HexScore     points a team earned in one map hexagon (territory is the sum, fading over time)
@@ -35,7 +36,12 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(40))
+    # Old device-only accounts (before sign-in existed) still use this token until they save their account.
+    # Accounts with a login use LoginSession tokens instead, and this is just a random value nobody knows.
     token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    email: Mapped[str | None] = mapped_column(String(254), unique=True, index=True)  # lowercase
+    password_hash: Mapped[str | None] = mapped_column(String(200))                    # scrypt, see auth.py
+    google_sub: Mapped[str | None] = mapped_column(String(64), unique=True, index=True)  # Google's user id
     team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"))
     interests: Mapped[list] = mapped_column(JSON, default=list)
     # Home is rounded (about 100 m) and only used to check solo sessions. Never shown to anyone.
@@ -281,3 +287,13 @@ class JobRun(Base):
     name: Mapped[str] = mapped_column(String(40))
     key: Mapped[str] = mapped_column(String(40))  # e.g. the day or the week it ran for
     ran_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class LoginSession(Base):
+    """One signed-in device. The app keeps the token; the database only keeps its SHA-256 hash."""
+    __tablename__ = "login_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

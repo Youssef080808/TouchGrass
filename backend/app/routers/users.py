@@ -1,15 +1,17 @@
-"""Sign-up, profile and notifications. Teams live in routers/teams.py."""
+"""Sign-up, profile and notifications. Signing in lives in routers/accounts.py, teams in routers/teams.py."""
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .. import auth
 from ..auth import current_user, new_token
 from ..db import get_db
 from ..models import Notification, Team, User
 from ..places import INTERESTS
 from ..serializers import team_out, user_out
 from ..timeutil import iso
+from .accounts import google_email
 from .teams import create_team, request_to_join
 
 router = APIRouter(tags=["users"])
@@ -26,6 +28,10 @@ class SignUp(BaseModel):
     new_team_color: str | None = Field(default=None, pattern=HEX_COLOR)
     home_lat: float | None = Field(default=None, ge=-90, le=90)
     home_lng: float | None = Field(default=None, ge=-180, le=180)
+    # How you'll sign in: an email + password, or a Google credential from the Sign in with Google button
+    email: str | None = Field(default=None, max_length=254)
+    password: str | None = Field(default=None, max_length=auth.PASSWORD_MAX)
+    google_credential: str | None = Field(default=None, max_length=4096)
 
 
 class ProfileUpdate(BaseModel):
@@ -44,6 +50,26 @@ def list_interests():
 def sign_up(body: SignUp, db: Session = Depends(get_db)):
     if not body.is_adult:
         raise HTTPException(400, "Turfed is for people 18 and older")
+
+    # The login first, so nothing is created if it's not valid
+    email = password_hash = google_sub = None
+    if body.google_credential:
+        claims = auth.verify_google(body.google_credential)
+        google_sub = claims["sub"]
+        if db.scalar(select(User.id).where(User.google_sub == google_sub)) is not None:
+            raise HTTPException(409, "This Google account already has an account. Sign in instead.")
+        email = google_email(claims)
+        if email and db.scalar(select(User.id).where(User.email == email)) is not None:
+            email = None  # someone else signed up with that email; this account just uses Google
+    elif body.email and body.password:
+        email = auth.normalize_email(body.email)
+        auth.check_new_password(body.password)
+        if db.scalar(select(User.id).where(User.email == email)) is not None:
+            raise HTTPException(409, "There's already an account with this email. Sign in instead.")
+        password_hash = auth.hash_password(body.password)
+    else:
+        raise HTTPException(400, "Add an email and password, or continue with Google.")
+
     team = None
     if body.team_id is not None:
         team = db.get(Team, body.team_id)
@@ -54,7 +80,10 @@ def sign_up(body: SignUp, db: Session = Depends(get_db)):
 
     user = User(
         name=body.name.strip(),
-        token=new_token(),
+        token=new_token(),  # not used to sign in (that's a LoginSession); kept because the column is required
+        email=email,
+        password_hash=password_hash,
+        google_sub=google_sub,
         interests=[i for i in body.interests if i in INTERESTS],
     )
     if body.home_lat is not None and body.home_lng is not None:
@@ -66,8 +95,9 @@ def sign_up(body: SignUp, db: Session = Depends(get_db)):
     else:
         create_team(db, user, body.new_team_name, body.new_team_color or "#22c55e")
     db.commit()
+    token = auth.start_session(db, user)
     db.refresh(user)
-    return {"token": user.token, "user": user_out(user)}
+    return {"token": token, "user": user_out(user)}
 
 
 @router.get("/me")

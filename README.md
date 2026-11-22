@@ -19,10 +19,11 @@ backend/                FastAPI + SQLAlchemy (Postgres on Neon, or SQLite for qu
   app/models.py         database tables
   app/points.py         the points formula (tune the numbers here)
   app/territory.py      hexagon ownership, fading, Friend or Foe alerts
+  app/auth.py           accounts: email + password, Sign in with Google, sessions
   app/places.py         place suggestions (Google Places or sample Montreal places)
   app/plans.py          rallies: reminders, auto-expiry, Team up truces
   app/hotzones.py       the day's hot zones (double points) and the evening push
-  app/routers/          API endpoints: users, teams (join requests), hangs (+ live WebSocket), map/leaderboard/suggestions,
+  app/routers/          API endpoints: accounts (sign in/out), users, teams (join requests), hangs (+ live WebSocket), map/leaderboard/suggestions,
                         meet (open Hangs), rallies (plans, zones, hot zones), recap (weekly recap, history)
   seed.py               fake teams, players and territory for demos
 frontend/               React + Vite + Tailwind, phone-first
@@ -90,9 +91,21 @@ Open that link on your phones. Everything (app + API + live updates) goes throug
 
 1. Create a free Postgres database on [Neon](https://neon.tech) and copy its connection string.
 2. On [Render](https://render.com): New → Web Service → connect this repo → it detects the `Dockerfile`.
-3. Add environment variables: `DATABASE_URL` (Neon), optionally `GOOGLE_PLACES_API_KEY` and `POINTS_TIME_SCALE`.
+3. Add environment variables: `DATABASE_URL` (Neon), optionally `GOOGLE_CLIENT_ID` (see below),
+   `GOOGLE_PLACES_API_KEY` and `POINTS_TIME_SCALE`.
 4. Deploy, then run the seed once from your laptop with the same `DATABASE_URL` in `backend/.env`:
    `python seed.py --reset`.
+
+**Sign in with Google (optional)**
+
+Email + password works with no setup. To add the "Continue with Google" button:
+
+1. [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → Create credentials → OAuth client
+   ID → Web application (set up the consent screen first if it asks: External, app name, your email).
+2. Under "Authorized JavaScript origins" add `http://localhost:5173` and your deployed address
+   (e.g. `https://turfed.onrender.com`). No redirect URIs needed.
+3. Put the client ID in `GOOGLE_CLIENT_ID` (`backend/.env` locally, environment variables on Render) and restart.
+   The button shows up on its own; no front-end rebuild.
 
 ## Demo tips
 
@@ -188,6 +201,12 @@ Open that link on your phones. Everything (app + API + live updates) goes throug
   "contested". See `backend/app/territory.py`.
 - **Live updates:** the Hang screen keeps a WebSocket open; the server checks the Hang every 2 s and pushes changes.
   If the WebSocket fails, the app falls back to asking every 3 s.
+- **Accounts:** sign up with an email + password or "Continue with Google", then sign in on any phone. Passwords
+  are hashed with scrypt; each signed-in phone gets its own session token, and the database only stores a hash
+  of it, so logging out really signs that phone out. Google sign-in is checked on the server (Google's signature,
+  our client ID, expiry). Accounts made before this keep working and see "Save your account" in the Me tab.
+  8 wrong passwords in 15 minutes locks that email for a while. No password reset email yet (needs an email
+  service), but you can link Google as a second way in. See `backend/app/auth.py` and `routers/accounts.py`.
 - **Privacy:** 18+ only; no live location is shown to anyone; home is rounded and never shown; the map shows teams,
   never individual people.
 - **What breaks at 100× the users:** territory is computed from every score row on each request (fix: keep running

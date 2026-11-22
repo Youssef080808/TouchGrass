@@ -35,7 +35,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .. import hotzones, notify, plans, territory
-from ..auth import current_user
+from ..auth import current_user, user_for_token
 from ..config import (DAILY_POINTS_CAP, HOME_RADIUS_M, JOIN_RADIUS_M, MIN_HANG_MINUTES, NO_CHECKIN_END_HOURS,
                       PLACE_RADIUS_M, POINTS_TIME_SCALE, REPORTS_TO_BLOCK)
 from ..db import SessionLocal, get_db
@@ -485,10 +485,8 @@ def _load_state(hang_id: int) -> dict | None:
 
 
 def _token_ok(token: str | None) -> bool:
-    if not token:
-        return False
     with SessionLocal() as db:
-        return db.scalar(select(User.id).where(User.token == token)) is not None
+        return user_for_token(db, token) is not None
 
 
 @router.websocket("/ws/hangs/{hang_id}")

@@ -34,6 +34,11 @@ def user_out(user: User) -> dict:
         "points": user.points,
         "streak": user.streak,
         "has_home": user.home_lat is not None,
+        # Only ever sent to the player themselves (/me, sign-up, sign-in)
+        "email": user.email,
+        "google": bool(user.google_sub),
+        "has_login": bool(user.email and user.password_hash) or bool(user.google_sub),
+        "has_password": bool(user.password_hash),
         "people_met": len(people_met(db, user.id)) if db else 0,
     }
 

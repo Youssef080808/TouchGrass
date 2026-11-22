@@ -48,6 +48,10 @@ RECAP_PUSH_HOUR = _int("RECAP_PUSH_HOUR", 18)                  # local hour of t
 
 # Web Push notifications. Leave the keys empty and the server makes a pair once and keeps it in
 # backend/vapid.json (git-ignored). Changing keys means everyone has to turn notifications on again.
+# Sign in with Google: the OAuth client ID from Google Cloud (Credentials > OAuth client ID > Web application).
+# Leave empty to hide the Google button (email + password still works).
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+
 VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
 VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
 VAPID_SUBJECT = os.getenv("VAPID_SUBJECT") or "mailto:turfed@example.com"  # who push services can contact

@@ -16,9 +16,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from .config import CORS_ORIGINS, STATIC_DIR
-from .db import Base, DB_URL, add_missing_columns, engine
+from .db import Base, DB_URL, add_missing_columns, add_missing_indexes, engine
 from . import hotzones, plans
-from .routers import game, hangs, meet, push, rallies, recap, teams, users
+from .routers import accounts, game, hangs, meet, push, rallies, recap, teams, users
 
 
 @asynccontextmanager
@@ -26,6 +26,7 @@ async def lifespan(app: FastAPI):
     # Creates any missing tables and columns. Fine for a hackathon; use Alembic migrations for a real launch.
     Base.metadata.create_all(engine)
     added = add_missing_columns()
+    add_missing_indexes()
     log = logging.getLogger("uvicorn.error")
     if added:
         log.info("Added missing database columns: %s", ", ".join(added))
@@ -76,6 +77,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(accounts.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(teams.router, prefix="/api")
 app.include_router(hangs.router, prefix="/api")
