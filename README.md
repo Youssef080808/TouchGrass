@@ -130,7 +130,7 @@ Email + password works with no setup. To add the "Continue with Google" button:
 - `python seed.py --reset` wipes everything and reloads the sample data before you present. Also run it after
   pulling changes that add database columns (SQLite doesn't update existing tables).
 
-## How it works (for the judges' Q&A)
+## How it works
 
 - **Points:** minutes together × party bonus (+0.5 per teammate, +0.3 per other player, max 3×) × phones-down
   bonus (up to 1.5×) × streak bonus (+10% per day, max +50%) × active place (+20%) × bad weather (+20%) × hot zone
