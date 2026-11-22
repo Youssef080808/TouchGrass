@@ -1,17 +1,20 @@
-import { ArrowLeft, Check, Hexagon, MapPin, Plus, Smartphone, Users } from 'lucide-react'
+import { ArrowLeft, Check, Hexagon, LogIn, MapPin, Plus, Smartphone, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import { EmailPasswordFields, looksLikeEmail, OrDivider, PASSWORD_MIN } from '../components/AuthFields'
+import GoogleButton from '../components/GoogleButton'
 import { LogoMark } from '../components/Logo'
 import { Button, ErrorText, Rise } from '../components/ui'
 import { APP_NAME, TAGLINE, TEAM_COLORS } from '../config'
+import { useGoogleEnabled } from '../lib/google'
 import { getPosition } from '../lib/location'
 import { useUser } from '../user'
 import GlassFold from '../components/GlassFold'
 
 export const PENDING_JOIN_KEY = 'tg_pending_join'
 
-const STEPS = ['welcome', 'name', 'interests', 'team', 'home']
+const STEPS = ['welcome', 'account', 'name', 'interests', 'team', 'home']
 const DEFAULT_INTERESTS = [
   'Basketball', 'Soccer', 'Running', 'Climbing', 'Gym', 'Tennis', 'Hiking', 'Board games',
   'Coffee', 'Reading', 'Art', 'Music', 'Movies', 'Food', 'Photography', 'Bowling',
@@ -47,6 +50,13 @@ export default function Onboarding() {
   const [home, setHome] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  // Account: email + password, or a Google credential for a new account
+  const [signingIn, setSigningIn] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [google, setGoogle] = useState(null) // { credential, email }
+  const [emailTaken, setEmailTaken] = useState(false)
+  const googleOn = useGoogleEnabled()
 
   useEffect(() => {
     api('/interests')
@@ -71,6 +81,7 @@ export default function Onboarding() {
 
   const canContinue = {
     welcome: true,
+    account: Boolean(google) || (looksLikeEmail(email) && password.length >= PASSWORD_MIN),
     name: name.trim().length > 0 && isAdult,
     interests: interests.length > 0,
     team: teamId !== null || newTeam.trim().length > 0,
@@ -83,6 +94,74 @@ export default function Onboarding() {
       setHome(await getPosition())
     } catch (e) {
       setError(e.message)
+    }
+  }
+
+  // Signed in (new or existing account): go home, or to the Hang whose QR code brought you here
+  const enter = (token, user) => {
+    signIn(token, user)
+    const pending = sessionStorage.getItem(PENDING_JOIN_KEY)
+    sessionStorage.removeItem(PENDING_JOIN_KEY)
+    navigate(pending ? `/join/${pending}` : '/', { replace: true })
+  }
+
+  // Continue with Google: an existing account signs in; a new one fills in the rest of the profile
+  const onGoogle = async (credential) => {
+    setBusy(true)
+    setError(null)
+    try {
+      const r = await api('/auth/google', { method: 'POST', body: { credential } })
+      if (r.token) {
+        enter(r.token, r.user)
+        return
+      }
+      setGoogle({ credential, email: r.email })
+      if (!name.trim() && r.name) setName(r.name)
+      setSigningIn(false)
+      setStep(STEPS.indexOf('name'))
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const signInWithEmail = async () => {
+    if (!looksLikeEmail(email) || !password) {
+      setError('Enter your email and password.')
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      const r = await api('/auth/login', { method: 'POST', body: { email, password } })
+      enter(r.token, r.user)
+    } catch (e) {
+      setError(e.message)
+      setBusy(false)
+    }
+  }
+
+  // The account step: catch a taken email now, not after the whole profile
+  const continueAccount = async () => {
+    if (google) {
+      setStep(step + 1)
+      return
+    }
+    setBusy(true)
+    setError(null)
+    setEmailTaken(false)
+    try {
+      const r = await api('/auth/check-email', { method: 'POST', body: { email } })
+      if (r.available) setStep(step + 1)
+      else {
+        setEmailTaken(true)
+        setError("There's already an account with this email.")
+      }
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -101,19 +180,72 @@ export default function Onboarding() {
           new_team_color: teamId === null ? newColor : null,
           home_lat: home?.lat ?? null,
           home_lng: home?.lng ?? null,
+          ...(google ? { google_credential: google.credential } : { email: email.trim(), password }),
         },
       })
-      signIn(token, user)
-      const pending = sessionStorage.getItem(PENDING_JOIN_KEY)
-      sessionStorage.removeItem(PENDING_JOIN_KEY)
-      navigate(pending ? `/join/${pending}` : '/', { replace: true })
+      enter(token, user)
     } catch (e) {
       setError(e.message)
       setBusy(false)
     }
   }
 
-  const next = () => (step === STEPS.length - 1 ? finish() : setStep(step + 1))
+  const next = () => {
+    if (STEPS[step] === 'account') continueAccount()
+    else if (step === STEPS.length - 1) finish()
+    else setStep(step + 1)
+  }
+
+  if (signingIn) {
+    return (
+      <div className="flex min-h-dvh flex-col bg-canvas px-5 pb-8 pt-6">
+        <div className="mb-8 flex items-center">
+          <button
+            aria-label="Back"
+            onClick={() => {
+              setSigningIn(false)
+              setError(null)
+            }}
+            className="-ml-2 flex size-11 items-center justify-center rounded-full active:bg-chip"
+          >
+            <ArrowLeft className="size-5" />
+          </button>
+        </div>
+        <div className="flex-1">
+          <Rise as="section">
+            <StepTitle sub="Sign in to pick up where you left off.">Welcome back</StepTitle>
+            <div className="mt-6">
+              <GoogleButton text="signin_with" onCredential={onGoogle} />
+              {googleOn && <OrDivider />}
+              <EmailPasswordFields
+                email={email}
+                setEmail={setEmail}
+                password={password}
+                setPassword={setPassword}
+                onSubmit={signInWithEmail}
+              />
+            </div>
+          </Rise>
+        </div>
+        <div className="space-y-3 pt-6">
+          <ErrorText>{error}</ErrorText>
+          <Button className="h-14 w-full text-lg" onClick={signInWithEmail} loading={busy}>
+            <LogIn className="size-5" aria-hidden /> Sign in
+          </Button>
+          <button
+            onClick={() => {
+              setSigningIn(false)
+              setError(null)
+              setStep(STEPS.indexOf('account'))
+            }}
+            className="h-11 w-full rounded-full text-[15px] font-semibold text-brand-ink active:bg-chip"
+          >
+            New here? Create an account
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (STEPS[step] === 'welcome') {
     return (
@@ -146,6 +278,15 @@ export default function Onboarding() {
           <Button variant="lime" className="h-14 w-full text-lg" onClick={next}>
             Get started
           </Button>
+          <button
+            onClick={() => {
+              setError(null)
+              setSigningIn(true)
+            }}
+            className="mt-2 h-12 w-full rounded-full text-[16px] font-semibold text-white/85 active:bg-white/10"
+          >
+            I already have an account
+          </button>
           <p className="mt-3 text-center text-sm text-white/45">Free · 18+ · {APP_NAME}</p>
         </Rise>
       </div>
@@ -166,6 +307,41 @@ export default function Onboarding() {
       </div>
 
       <div className="flex-1" key={step}>
+        {STEPS[step] === 'account' && (
+          <Rise as="section">
+            <StepTitle sub="So you can sign in on any phone and never lose your points.">Create your account</StepTitle>
+            <div className="mt-6">
+              {google ? (
+                <div className="flex items-center gap-3 rounded-2xl bg-surface p-4 ring-1 ring-line">
+                  <Check className="size-5 shrink-0 text-grass" aria-hidden />
+                  <span className="min-w-0 flex-1 text-[15px]">
+                    Signing up with Google{google.email && <b className="block truncate">{google.email}</b>}
+                  </span>
+                  <button onClick={() => setGoogle(null)} className="min-h-11 rounded-full px-3 text-sm font-semibold text-brand-ink active:bg-chip">
+                    Change
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <GoogleButton text="signup_with" onCredential={onGoogle} />
+                  {googleOn && <OrDivider>or use email</OrDivider>}
+                  <EmailPasswordFields
+                    isNew
+                    email={email}
+                    setEmail={(v) => {
+                      setEmail(v)
+                      setEmailTaken(false)
+                    }}
+                    password={password}
+                    setPassword={setPassword}
+                    onSubmit={() => canContinue && next()}
+                  />
+                </>
+              )}
+            </div>
+          </Rise>
+        )}
+
         {STEPS[step] === 'name' && (
           <Rise as="section">
             <StepTitle>What should we call you?</StepTitle>
@@ -300,6 +476,15 @@ export default function Onboarding() {
 
       <div className="space-y-3 pt-6">
         <ErrorText>{error}</ErrorText>
+        {emailTaken && STEPS[step] === 'account' && (
+          <Button variant="secondary" className="h-12 w-full" onClick={() => {
+            setError(null)
+            setEmailTaken(false)
+            setSigningIn(true)
+          }}>
+            <LogIn className="size-5" aria-hidden /> Sign in instead
+          </Button>
+        )}
         <Button className="h-14 w-full text-lg" onClick={next} disabled={!canContinue} loading={busy}>
           {step === STEPS.length - 1 ? (home ? "Let's go" : 'Skip for now') : 'Continue'}
         </Button>

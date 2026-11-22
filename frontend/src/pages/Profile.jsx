@@ -1,6 +1,7 @@
 import { Check, Flame, FlaskConical, Handshake, Hexagon, LogOut, MapPin, Monitor, Moon, Palette, Sparkles, Sun } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
+import AccountCard from '../components/AccountCard'
 import AnimatedNumber from '../components/AnimatedNumber'
 import HangHistory from '../components/HangHistory'
 import NotificationsCard from '../components/NotificationsCard'
@@ -43,6 +44,8 @@ export default function Profile() {
   )
   const [customLat, setCustomLat] = useState(initialFake?.lat?.toString() ?? '')
   const [customLng, setCustomLng] = useState(initialFake?.lng?.toString() ?? '')
+  // An unsaved account gets the "Save your account" card at the top (and it stays there once saved)
+  const [accountFirst] = useState(!user.has_login)
 
   useEffect(() => {
     api('/interests').then(setAllInterests).catch(() => {})
@@ -134,6 +137,11 @@ export default function Profile() {
       </header>
 
       <div className="space-y-4 px-4 pt-5">
+        {accountFirst && (
+          <Rise>
+            <AccountCard />
+          </Rise>
+        )}
         {message && (
           <p role="status" className="flex items-center gap-2 rounded-2xl bg-lime px-3 py-2 text-sm font-semibold text-on-accent">
             <Check className="size-4" aria-hidden /> {message}
@@ -270,7 +278,23 @@ export default function Profile() {
         </Rise>
         )}
 
-        <Button variant="danger" className="w-full" onClick={() => window.confirm('Log out on this device?') && signOut()}>
+        {!accountFirst && (
+          <Rise>
+            <AccountCard />
+          </Rise>
+        )}
+
+        <Button
+          variant="danger"
+          className="w-full"
+          onClick={() =>
+            window.confirm(
+              user.has_login
+                ? 'Log out on this device?'
+                : "Your account isn't saved yet, so you won't be able to sign back in to it. Log out anyway?",
+            ) && signOut()
+          }
+        >
           <LogOut className="size-5" aria-hidden /> Log out
         </Button>
       </div>

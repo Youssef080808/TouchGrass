@@ -42,6 +42,8 @@ export function UserProvider({ children }) {
     setUser(me)
   }
   const signOut = () => {
+    // Ends this device's session on the server too (best effort: we sign out locally either way)
+    if (getToken()) api('/auth/logout', { method: 'POST' }).catch(() => {})
     setToken(null)
     setUser(null)
   }
