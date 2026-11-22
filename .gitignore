@@ -8,3 +8,5 @@ dist/
 .DS_Store
 *.db
 vapid.json
+*serviceAccount*.json
+*-firebase-adminsdk-*.json

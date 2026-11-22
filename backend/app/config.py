@@ -17,7 +17,15 @@ def _int(name: str, default: int) -> int:
 
 
 # Empty DATABASE_URL -> local SQLite file, so the app runs with zero setup.
-DATABASE_URL = os.getenv("DATABASE_URL") or f"sqlite:///{BACKEND_DIR / 'touchgrass.db'}"
+APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
+_database_url = os.getenv("DATABASE_URL", "").strip()
+if APP_ENV == "production" and not _database_url.startswith(
+    ("postgres://", "postgresql://", "postgresql+psycopg://")
+):
+    raise RuntimeError(
+        "Production requires a PostgreSQL DATABASE_URL. Configure it in the hosting provider's secrets."
+    )
+DATABASE_URL = _database_url or f"sqlite:///{BACKEND_DIR / 'touchgrass.db'}"
 GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY", "")
 TIMEZONE = os.getenv("TIMEZONE") or "America/Montreal"
 
