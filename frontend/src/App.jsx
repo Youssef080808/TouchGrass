@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
+import LaunchSplash from './components/LaunchSplash'
 import TabBar from './components/TabBar'
 import { Button, Spinner } from './components/ui'
 import HangPage from './pages/HangPage'
@@ -26,7 +27,12 @@ function RememberJoin() {
 
 function Shell({ children }) {
   // The app is phone-sized; on a laptop it sits in a centred phone-width column.
-  return <div className="relative mx-auto min-h-dvh w-full max-w-[440px] bg-canvas shadow-2xl">{children}</div>
+  return (
+    <div className="relative mx-auto min-h-dvh w-full max-w-[440px] bg-canvas shadow-2xl">
+      {children}
+      <LaunchSplash />
+    </div>
+  )
 }
 
 export default function App() {

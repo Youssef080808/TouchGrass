@@ -38,6 +38,10 @@
   --animate-push: push-in 0.36s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
+@keyframes splash-word {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
 @keyframes page-in {
   from { opacity: 0; transform: translateY(10px); }
 }
