@@ -6,6 +6,7 @@ import AnimatedNumber from '../components/AnimatedNumber'
 import HangHistory from '../components/HangHistory'
 import NotificationsCard from '../components/NotificationsCard'
 import TeamCard from '../components/TeamCard'
+import HexGlyphBackground from '../components/HexGlyphBackground'
 import WeekRecap from '../components/WeekRecap'
 import { Avatar, Button, Card, ErrorText, Rise, SectionTitle } from '../components/ui'
 import { DEMO_MODE } from '../config'
@@ -118,7 +119,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-dvh bg-canvas pb-32">
-      <header className="pt-safe bg-hex rounded-b-[36px] bg-brand px-5 pb-6 text-white">
+      <HexGlyphBackground as="header" className="pt-safe rounded-b-[36px] bg-brand px-5 pb-6 text-white">
         <Rise className="flex flex-col items-center pt-10">
           <Avatar name={user.name} color={user.team?.color} size={88} ring />
           <h1 className="mt-4 font-display text-[36px] font-extrabold leading-none">{user.name}</h1>
@@ -134,7 +135,7 @@ export default function Profile() {
           <HeaderStat icon={<Hexagon className="size-5 text-sky-300" aria-hidden />} value={zones} label="team zones" />
           <HeaderStat icon={<Handshake className="size-5 text-pink-300" aria-hidden />} value={user.people_met ?? 0} label="people met" />
         </div>
-      </header>
+      </HexGlyphBackground>
 
       <div className="space-y-4 px-4 pt-5">
         {accountFirst && (
