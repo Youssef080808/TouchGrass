@@ -16,6 +16,8 @@ function Stat({ icon: Icon, value, label, main = false }) {
   )
 }
 
+// Card footers have room for about 26 characters
+const clip = (t, n) => (t.length > n ? `${t.slice(0, n - 1).trimEnd()}…` : t)
 const short = (h) => (h >= 10 ? Math.round(h) : Math.round(h * 10) / 10)
 
 // Turfed colours: navy into lime, blue, violet and orange (a few colours are spread over the card's mesh)
@@ -32,7 +34,7 @@ function recapCards(r) {
   return [
     { title: 'Time with\nfriends', value: String(short(r.hours_together)), unit: 'h', footer: change > 0 ? `${short(change)}h more than last week` : 'Since Monday', detail: 'ring', ...LOOK.friends },
     { title: 'New people\nyou met', value: String(r.new_people), footer: r.new_people ? 'Say hi again soon' : 'Join an open Hang', detail: 'wave', ...LOOK.people },
-    { title: 'Zones your\nteam holds', value: String(r.zones), footer: r.top_place ? `Mostly at ${r.top_place}` : 'Take one this week', detail: 'none', ...LOOK.zones },
+    { title: 'Zones your\nteam holds', value: String(r.zones), footer: r.top_place ? `Mostly at ${clip(r.top_place, 16)}` : 'Take one this week', detail: 'none', ...LOOK.zones },
     { title: 'Phones down\nduring Hangs', value: String(share), unit: '%', footer: `${short(r.phones_down_hours)}h with phones away`, detail: 'slider', labels: ['Phones out', 'Phones down'], ...LOOK.phones },
   ]
 }
