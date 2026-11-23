@@ -258,7 +258,14 @@ export default function HangPage() {
         )}
 
         <div className="mt-5">
-          <BonusRing share={share} size={224} stroke={12}>
+          <BonusRing
+            share={share}
+            size={224}
+            stroke={12}
+            people={hang.members
+              .filter((m) => !m.left_at)
+              .map((m) => ({ id: m.user_id, name: m.name, color: m.team?.color ?? '#4b5563' }))}
+          >
             <p className="font-display text-sm font-bold uppercase tracking-[0.18em] text-white/60">
               {me.left_at ? 'Your time' : 'Time together'}
             </p>

@@ -42,6 +42,14 @@
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: none; }
 }
+/* Satin background: the light bands drift slowly (SatinBackground) */
+@keyframes satin-a { 0%,100% { transform: translate(0,0) rotate(0deg) } 50% { transform: translate(-28px,18px) rotate(-4deg) } }
+@keyframes satin-b { 0%,100% { transform: translate(0,0) } 50% { transform: translate(34px,-22px) } }
+@keyframes satin-c { 0%,100% { transform: translate(0,0) rotate(0deg) } 50% { transform: translate(18px,26px) rotate(5deg) } }
+.satin-drift-a { transform-origin: 200px 200px; animation: satin-a 14s ease-in-out infinite }
+.satin-drift-b { transform-origin: 200px 200px; animation: satin-b 18s ease-in-out infinite }
+.satin-drift-c { transform-origin: 200px 200px; animation: satin-c 22s ease-in-out infinite }
+@media (prefers-reduced-motion: reduce) { .satin-drift-a, .satin-drift-b, .satin-drift-c { animation: none } }
 @keyframes page-in {
   from { opacity: 0; transform: translateY(10px); }
 }

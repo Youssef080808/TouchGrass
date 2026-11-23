@@ -2,8 +2,8 @@ import { CloudRain, Dumbbell, Flag, Flame, Handshake, Hexagon, Map as MapIcon, M
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import LiquidText from '../components/LiquidText'
-import GlassFold from '../components/GlassFold'
+import ChromeText from '../components/ChromeText'
+import SatinBackground from '../components/SatinBackground'
 import ReportButton from '../components/ReportButton'
 import { Avatar, Button, Card, ErrorText, Rise, SectionTitle, TeamDot } from '../components/ui'
 import { celebrate } from '../lib/confetti'
@@ -133,13 +133,13 @@ export default function Results({ hang, me, onHang }) {
   return (
     <div className="min-h-dvh bg-canvas pb-10">
       <header className="pt-safe relative overflow-hidden rounded-b-[36px] bg-brand px-5 pb-12 text-center text-white">
-        {/* Celebration background: blue folded glass, so the lime score stands out */}
-        <GlassFold color1="#1e3cc8" color2="#06081e" color3="#96d7ff" speed={0.6} scale={1.2} className="absolute inset-0" />
-        <div className="pointer-events-none absolute inset-0 bg-[#0b1d3a]/35" aria-hidden />
+        {/* Celebration background: slowly drifting black-and-white satin with grain */}
+        <SatinBackground className="absolute inset-0 h-full w-full" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/55" aria-hidden />
         <div className="relative">
         <p className="pt-10 font-display text-lg font-bold uppercase tracking-[0.3em] text-white/50">Hang over</p>
-        <p className="mt-2 font-display text-[96px] font-extrabold leading-none text-lime drop-shadow-[0_4px_24px_rgba(0,0,0,0.45)] motion-safe:animate-pop">
-          <LiquidText fill={points > 0 ? 0.8 : 0.12} delay={350}>+{points}</LiquidText>
+        <p className="mt-2 flex justify-center motion-safe:animate-pop">
+          <ChromeText size={104}>{`+${points}`}</ChromeText>
         </p>
         <p className="mt-1 text-[15px] text-white/70">points{hang.place_name ? ` at ${hang.place_name}` : ''}</p>
         {points === 0 && !b?.capped && (
