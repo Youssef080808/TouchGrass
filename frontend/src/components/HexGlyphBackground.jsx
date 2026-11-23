@@ -17,8 +17,8 @@ const WAVE_LIFE = 4
 const WAVE_GAP = 0.3
 const WAVE_SPEED = 560
 const WAVE_SLOWDOWN = 0.66
-const WAVE_EDGE = 10
-const WAVE_TAIL = 30
+const WAVE_EDGE = 14
+const WAVE_TAIL = 42
 const DRIFT = [-30, 12]
 const ACTIVITY_DECAY = 900
 
@@ -107,10 +107,12 @@ void main() {
   float epoch = floor(time * 0.08 * (0.4 + seed) + seed * 97.0);
   float glyph = floor(hash(index + epoch * 0.137) * count);
   vec2 local = fract(shifted / cell);
-  float ink = pow(texture2D(atlas, vec2((glyph + local.x) / count, local.y)).a, 1.4);
+  float a = texture2D(atlas, vec2((glyph + local.x) / count, local.y)).a;
+  float ink = pow(a, 1.4);
+  float inkGlow = pow(a, 0.7); // the ripple fills the whole hex outline, so the green reads strongly
 
   float grey = ink * clamp(rest + haze * mask * (1.0 + 0.3 * activity) + hoverInk * hover * (0.6 + 0.4 * mask), 0.0, 1.0);
-  float glow = ink * ring * 0.85;
+  float glow = clamp(inkGlow * ring * 1.35, 0.0, 1.0);
   float alpha = grey + glow - grey * glow;
   vec3 tint = color * grey * (1.0 - glow) + accent * glow;
   gl_FragColor = vec4(tint, alpha);
@@ -155,7 +157,7 @@ function drawAtlas(w, h) {
     c.closePath()
   }
   const r = Math.min(w, h) * 0.36
-  const line = Math.max(1, r * 0.16)
+  const line = Math.max(1.5, r * 0.13)
   const styles = [
     () => { c.lineWidth = line; c.stroke() },
     () => { c.lineWidth = line * 1.6; c.stroke() },
@@ -237,9 +239,9 @@ export default function HexGlyphBackground({
   as: Tag = 'div',
   color = '#ffffff',
   accent = '#bef264',
-  size = 14,
-  rest = 0.1,
-  haze = 0.32,
+  size = 22,
+  rest = 0.09,
+  haze = 0.26,
   className,
   children,
   onPointerDown,
