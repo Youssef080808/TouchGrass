@@ -6,7 +6,7 @@ import {
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import AnimatedNumber from '../components/AnimatedNumber'
+import { CountUp } from '../components/AnimatedNumber'
 import FriendOrFoe from '../components/FriendOrFoe'
 import LiquidText from '../components/LiquidText'
 import { LogoMark } from '../components/Logo'
@@ -54,7 +54,7 @@ function HeroStat({ icon, value, label }) {
     <div className="flex flex-col">
       <span className="flex items-center gap-1.5 font-display text-[26px] font-bold leading-none">
         {icon}
-        <AnimatedNumber value={value} />
+        <CountUp to={value} steps={16} duration={900} delay={200} />
       </span>
       <span className="mt-1 text-[12px] font-medium text-white/60">{label}</span>
     </div>
