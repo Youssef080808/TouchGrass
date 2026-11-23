@@ -2,7 +2,7 @@ import { Check, Flame, FlaskConical, Handshake, Hexagon, LogOut, MapPin, Monitor
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import AccountCard from '../components/AccountCard'
-import AnimatedNumber from '../components/AnimatedNumber'
+import { CountUp } from '../components/AnimatedNumber'
 import HangHistory from '../components/HangHistory'
 import NotificationsCard from '../components/NotificationsCard'
 import TeamCard from '../components/TeamCard'
@@ -22,7 +22,7 @@ function HeaderStat({ icon, value, label }) {
     <div className="flex-1 rounded-2xl bg-white/10 p-3 text-center">
       <span className="flex items-center justify-center gap-1.5 font-display text-[28px] font-bold leading-none">
         {icon}
-        <AnimatedNumber value={value} />
+        <CountUp to={value} steps={16} duration={900} delay={200} />
       </span>
       <span className="mt-1 block text-xs font-medium text-white/60">{label}</span>
     </div>

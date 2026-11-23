@@ -1,5 +1,6 @@
 // Adapted from 21st.dev "Bottom Nav Bar" by arunachalam (https://21st.dev/r/arunachalam/bottom-nav-bar).
-// Floating pill tab bar: the active tab shows its label with a spring animation.
+// Floating pill tab bar: the active tab shows its label with a spring animation, and one shared pill
+// slides from the old tab to the new one (motion's layoutId).
 import { House, Map as MapIcon, Trophy, UserRound, UsersRound } from 'lucide-react'
 import { motion } from 'motion/react'
 import { NavLink } from 'react-router-dom'
@@ -31,10 +32,18 @@ export default function TabBar() {
             <motion.span
               whileTap={{ scale: 0.94 }}
               className={cn(
-                'relative flex h-11 min-w-11 items-center justify-center rounded-full px-3 transition-colors duration-200',
-                isActive ? 'bg-brand text-white dark:bg-lime dark:text-on-accent' : 'text-muted hover:bg-chip',
+                'relative isolate flex h-11 min-w-11 items-center justify-center rounded-full px-3 transition-colors duration-200',
+                isActive ? 'text-white dark:text-on-accent' : 'text-muted hover:bg-chip',
               )}
             >
+              {isActive && (
+                <motion.span
+                  layoutId="tab-pill"
+                  aria-hidden
+                  className="absolute inset-0 -z-10 rounded-full bg-brand dark:bg-lime"
+                  transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                />
+              )}
               <Icon size={22} strokeWidth={isActive ? 2.4 : 2} aria-hidden />
               <motion.span
                 initial={false}
