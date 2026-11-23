@@ -12,6 +12,7 @@ import LiquidText from '../components/LiquidText'
 import { LogoMark } from '../components/Logo'
 import OpenHangCard from '../components/OpenHangCard'
 import Rallies from '../components/Rallies'
+import HexGlyphBackground from '../components/HexGlyphBackground'
 import QuestCard from '../components/QuestCard'
 import RallySheet from '../components/RallySheet'
 import TeamRequests from '../components/TeamRequests'
@@ -211,7 +212,7 @@ export default function Home() {
 
         {/* 1. Start a Hang right where you are */}
         <Rise>
-          <section className="bg-hex relative overflow-hidden rounded-[28px] bg-brand p-5 text-white shadow-xl shadow-brand/20">
+          <HexGlyphBackground as="section" className="rounded-[28px] bg-brand p-5 text-white shadow-xl shadow-brand/20">
             <div className="flex gap-6">
               <HeroStat icon={<Flame className="size-5 text-orange-400" aria-hidden />} value={user.streak} label="day streak" />
               <HeroStat icon={<Sparkles className="size-5 text-lime" aria-hidden />} value={user.points} label="points" />
@@ -306,7 +307,7 @@ export default function Home() {
             >
               <Footprints className="size-4" aria-hidden /> {busy === 'solo' ? 'Starting...' : 'Or go solo'}
             </button>
-          </section>
+          </HexGlyphBackground>
         </Rise>
 
         <ErrorText>{error && !error.place && error.message}</ErrorText>
